@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "name": "Auto-run Database Migration",
+  "description": "Automatically runs database migrations when a new migration file is saved in backend/src/db/migrations/",
+  "version": "1",
+  "when": {
+    "type": "fileCreated",
+    "patterns": [
+      "backend/src/db/migrations/*.sql"
+    ]
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "cd backend && npm run migrate"
+  }
+}

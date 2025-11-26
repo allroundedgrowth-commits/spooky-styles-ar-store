@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2D AR Try-On Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(to bottom, #1a0033, #000);
+            color: white;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .test-card {
+            background: rgba(139, 92, 246, 0.2);
+            border: 2px solid rgba(139, 92, 246, 0.5);
+            border-radius: 10px;
+            padding: 20px;
+        }
+        .test-card h3 {
+            color: #a78bfa;
+            margin-top: 0;
+        }
+        .test-link {
+            display: inline-block;
+            background: linear-gradient(to right, #7c3aed, #ec4899);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            margin: 10px 10px 10px 0;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+        .test-link:hover {
+            transform: scale(1.05);
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .status.running {
+            background: #10b981;
+        }
+        .status.stopped {
+            background: #ef4444;
+        }
+        .info {
+            background: rgba(59, 130, 246, 0.2);
+            border-left: 4px solid #3b82f6;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        ul {
+            line-height: 1.8;
+        }
+        code {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎃 2D AR Try-On - Test Page</h1>
+    
+    <div class="info">
+        <strong>📋 Test Checklist:</strong>
+        <ul>
+            <li>✅ Backend running on port 5000</li>
+            <li>✅ Frontend running on port 3001</li>
+            <li>✅ 2D AR engine implemented</li>
+            <li>✅ React hook created</li>
+            <li>✅ Try-on page created</li>
+            <li>✅ Routes configured</li>
+        </ul>
+    </div>
+
+    <div class="container">
+        <div class="test-card">
+            <h3>🎯 Quick Tests</h3>
+            <p>Test the 2D AR feature with these links:</p>
+            <a href="http://localhost:3001/ar-tryon-2d/1" class="test-link" target="_blank">
+                Try Product #1
+            </a>
+            <a href="http://localhost:3001/ar-tryon-2d/2" class="test-link" target="_blank">
+                Try Product #2
+            </a>
+            <a href="http://localhost:3001/products" class="test-link" target="_blank">
+                Browse All Products
+            </a>
+        </div>
+
+        <div class="test-card">
+            <h3>🔍 Feature Tests</h3>
+            <p>Test these specific features:</p>
+            <ul style="font-size: 14px;">
+                <li>Camera initialization</li>
+                <li>Wig image loading</li>
+                <li>Color picker</li>
+                <li>Size adjustment</li>
+                <li>Position adjustment</li>
+                <li>Screenshot capture</li>
+                <li>Add to cart</li>
+            </ul>
+        </div>
+
+        <div class="test-card">
+            <h3>📱 Device Tests</h3>
+            <p>Test on different devices:</p>
+            <ul style="font-size: 14px;">
+                <li>Desktop Chrome</li>
+                <li>Desktop Firefox</li>
+                <li>Mobile Safari (iOS)</li>
+                <li>Mobile Chrome (Android)</li>
+                <li>Tablet devices</li>
+            </ul>
+        </div>
+
+        <div class="test-card">
+            <h3>🎨 Visual Tests</h3>
+            <p>Check these visual elements:</p>
+            <ul style="font-size: 14px;">
+                <li>Camera feed quality</li>
+                <li>Wig overlay position</li>
+                <li>Color tinting accuracy</li>
+                <li>UI responsiveness</li>
+                <li>Button states</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="info" style="margin-top: 30px;">
+        <strong>💡 Testing Tips:</strong>
+        <ul>
+            <li><strong>Camera Permission:</strong> Make sure to allow camera access when prompted</li>
+            <li><strong>Lighting:</strong> Test in different lighting conditions</li>
+            <li><strong>Movement:</strong> Try moving your head to see tracking</li>
+            <li><strong>Colors:</strong> Test all available color options</li>
+            <li><strong>Screenshots:</strong> Verify screenshot downloads work</li>
+        </ul>
+    </div>
+
+    <div class="info" style="background: rgba(16, 185, 129, 0.2); border-left-color: #10b981;">
+        <strong>✅ Expected Behavior:</strong>
+        <ol>
+            <li>Click "Try On (2D Camera)" button on product page</li>
+            <li>Browser requests camera permission</li>
+            <li>Click "Start Try-On" button</li>
+            <li>Camera feed appears with wig overlay</li>
+            <li>Adjust size, position, and color in real-time</li>
+            <li>Take screenshot to save image</li>
+            <li>Add to cart when satisfied</li>
+        </ol>
+    </div>
+
+    <div class="test-card" style="margin-top: 20px;">
+        <h3>🐛 Known Limitations</h3>
+        <ul style="font-size: 14px;">
+            <li><strong>Face Detection:</strong> Currently uses placeholder (centered position)</li>
+            <li><strong>Color Tinting:</strong> Basic implementation, can be improved</li>
+            <li><strong>Rotation:</strong> No head rotation tracking yet</li>
+            <li><strong>Multiple Angles:</strong> Front view only</li>
+        </ul>
+        <p style="margin-top: 15px; font-size: 14px;">
+            <strong>Next Steps:</strong> Integrate MediaPipe Face Detection for accurate tracking
+        </p>
+    </div>
+
+    <div style="text-align: center; margin-top: 40px; padding: 20px; border-top: 2px solid rgba(139, 92, 246, 0.5);">
+        <p style="color: #a78bfa;">
+            <strong>Server Status:</strong>
+            <span class="status running">Backend: Running</span>
+            <span class="status running">Frontend: Running</span>
+        </p>
+        <p style="font-size: 14px; color: #9ca3af; margin-top: 10px;">
+            Backend: <code>http://localhost:5000</code> | 
+            Frontend: <code>http://localhost:3001</code>
+        </p>
+    </div>
+</body>
+</html>

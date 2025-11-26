@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Frontend Login</title>
+</head>
+<body>
+  <h1>Test Admin Login</h1>
+  <button onclick="testLogin()">Test Login</button>
+  <pre id="result"></pre>
+
+  <script>
+    async function testLogin() {
+      const resultEl = document.getElementById('result');
+      resultEl.textContent = 'Testing login...\n';
+      
+      try {
+        const response = await fetch('http://localhost:5000/api/auth/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: 'admin@spookystyles.com',
+            password: 'Admin123!'
+          })
+        });
+        
+        const data = await response.json();
+        resultEl.textContent += '\nStatus: ' + response.status;
+        resultEl.textContent += '\n\nResponse:\n' + JSON.stringify(data, null, 2);
+        
+        if (response.ok) {
+          resultEl.textContent += '\n\n✅ Login successful!';
+          resultEl.textContent += '\nToken: ' + data.data.token.substring(0, 30) + '...';
+          resultEl.textContent += '\nUser: ' + data.data.user.email;
+          resultEl.textContent += '\nIs Admin: ' + data.data.user.is_admin;
+        }
+      } catch (error) {
+        resultEl.textContent += '\n\n❌ Error: ' + error.message;
+      }
+    }
+  </script>
+</body>
+</html>

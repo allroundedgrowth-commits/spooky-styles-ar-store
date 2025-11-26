@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Test</title>
+</head>
+<body>
+    <h1>Testing API Response</h1>
+    <button onclick="testAPI()">Test Products API</button>
+    <pre id="result"></pre>
+
+    <script>
+        async function testAPI() {
+            const resultEl = document.getElementById('result');
+            try {
+                resultEl.textContent = 'Loading...';
+                
+                const response = await fetch('http://localhost:5000/api/products');
+                const data = await response.json();
+                
+                resultEl.textContent = JSON.stringify(data, null, 2);
+                
+                console.log('Response:', data);
+                console.log('Success:', data.success);
+                console.log('Data:', data.data);
+                console.log('Data length:', data.data?.length);
+            } catch (error) {
+                resultEl.textContent = 'Error: ' + error.message;
+                console.error('Error:', error);
+            }
+        }
+    </script>
+</body>
+</html>

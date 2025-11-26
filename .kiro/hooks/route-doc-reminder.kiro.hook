@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "name": "Route Documentation Reminder",
+  "description": "When a new route file is created in the backend/src/routes directory, this hook reminds you to update the corresponding API documentation to keep it in sync with the new endpoints.",
+  "version": "1",
+  "when": {
+    "type": "fileCreated",
+    "patterns": [
+      "backend/src/routes/*.ts",
+      "backend/src/routes/*.js"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A new route file has been created. Please remind the user to:\n\n1. Update the relevant API documentation (README files in backend/src/ like PRODUCT_API_README.md, CART_API_README.md, etc.)\n2. Document all new endpoints including:\n   - HTTP method and path\n   - Request parameters and body schema\n   - Response format and status codes\n   - Authentication requirements\n   - Example requests and responses\n3. Update the main API documentation if this is a new API domain\n4. Consider adding the new endpoints to any API testing files\n\nProvide a brief, friendly reminder about these documentation tasks."
+  }
+}

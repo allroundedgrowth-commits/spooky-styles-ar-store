@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: spooky-styles-config
+  namespace: spooky-styles
+data:
+  aws-region: "us-east-1"
+  s3-bucket-name: "spooky-styles-production"
+  cloudfront-domain: "cdn.spookystyles.com"
+  cors-origin: "https://spookystyles.com"

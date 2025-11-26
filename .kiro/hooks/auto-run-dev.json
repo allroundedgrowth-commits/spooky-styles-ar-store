@@ -1,0 +1,10 @@
+{
+  "name": "Auto Run Dev Server",
+  "description": "Automatically runs 'npm run dev' when the project is opened to start the development server",
+  "trigger": "onSessionCreate",
+  "enabled": true,
+  "action": {
+    "type": "command",
+    "command": "npm run dev"
+  }
+}

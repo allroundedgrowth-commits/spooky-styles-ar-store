@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: spooky-styles-backend
+  namespace: spooky-styles
+  labels:
+    app: spooky-styles
+    component: backend
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 3000
+    protocol: TCP
+    name: http
+  selector:
+    app: spooky-styles
+    component: backend
+  sessionAffinity: None

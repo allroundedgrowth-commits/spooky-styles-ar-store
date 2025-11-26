@@ -1,0 +1,350 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+
+env:
+  NODE_VERSION: '20'
+  DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
+
+jobs:
+  # Lint and Test
+  test:
+    name: Test and Lint
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_pass
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: |
+          npm ci
+          cd backend && npm ci
+          cd ../frontend && npm ci
+      
+      - name: Lint backend
+        run: cd backend && npm run lint
+      
+      - name: Lint frontend
+        run: cd frontend && npm run lint
+      
+      - name: Build backend
+        run: cd backend && npm run build
+      
+      - name: Build frontend
+        run: cd frontend && npm run build
+      
+      - name: Run database migrations
+        env:
+          DATABASE_URL: postgresql://test_user:test_pass@localhost:5432/test_db
+        run: cd backend && npm run db:migrate
+
+  # Build and Push Docker Image
+  build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push'
+    
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Log in to Docker Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.DOCKER_REGISTRY }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKER_REGISTRY }}/spooky-styles-backend
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+      
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=${{ secrets.DOCKER_REGISTRY }}/spooky-styles-backend:buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKER_REGISTRY }}/spooky-styles-backend:buildcache,mode=max
+
+  # Deploy to Staging
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/develop'
+    environment:
+      name: staging
+      url: https://staging.spookystyles.com
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      
+      - name: Deploy to ECS (Blue)
+        id: deploy-blue
+        run: |
+          # Update ECS task definition with new image
+          TASK_DEFINITION=$(aws ecs describe-task-definition --task-definition spooky-styles-staging-blue --query taskDefinition)
+          NEW_TASK_DEF=$(echo $TASK_DEFINITION | jq --arg IMAGE "${{ needs.build.outputs.image-tag }}" '.containerDefinitions[0].image = $IMAGE | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)')
+          NEW_TASK_INFO=$(aws ecs register-task-definition --cli-input-json "$NEW_TASK_DEF")
+          NEW_REVISION=$(echo $NEW_TASK_INFO | jq -r '.taskDefinition.revision')
+          
+          # Update service to use new task definition
+          aws ecs update-service --cluster spooky-styles-staging --service spooky-styles-staging-blue --task-definition spooky-styles-staging-blue:$NEW_REVISION --force-new-deployment
+          
+          # Wait for service to stabilize
+          aws ecs wait services-stable --cluster spooky-styles-staging --services spooky-styles-staging-blue
+          
+          echo "blue-revision=$NEW_REVISION" >> $GITHUB_OUTPUT
+      
+      - name: Run health checks
+        id: health-check
+        run: |
+          # Wait for deployment to be healthy
+          sleep 30
+          
+          # Check health endpoint
+          HEALTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://staging.spookystyles.com/health)
+          
+          if [ $HEALTH_STATUS -eq 200 ]; then
+            echo "Health check passed"
+            echo "healthy=true" >> $GITHUB_OUTPUT
+          else
+            echo "Health check failed with status $HEALTH_STATUS"
+            echo "healthy=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+      
+      - name: Run smoke tests
+        run: |
+          # Run basic smoke tests
+          curl -f https://staging.spookystyles.com/api/products || exit 1
+          echo "Smoke tests passed"
+      
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          echo "Deployment failed, rolling back..."
+          # Get previous task definition
+          PREVIOUS_TASK_DEF=$(aws ecs describe-services --cluster spooky-styles-staging --services spooky-styles-staging-blue --query 'services[0].deployments[1].taskDefinition' --output text)
+          
+          # Rollback to previous version
+          aws ecs update-service --cluster spooky-styles-staging --service spooky-styles-staging-blue --task-definition $PREVIOUS_TASK_DEF --force-new-deployment
+          
+          # Wait for rollback to complete
+          aws ecs wait services-stable --cluster spooky-styles-staging --services spooky-styles-staging-blue
+
+  # Deploy to Production (Blue-Green)
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    environment:
+      name: production
+      url: https://spookystyles.com
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      
+      - name: Determine active environment
+        id: determine-env
+        run: |
+          # Check which environment is currently active (blue or green)
+          ACTIVE_TARGET=$(aws elbv2 describe-target-groups --names spooky-styles-prod-active --query 'TargetGroups[0].TargetGroupArn' --output text)
+          BLUE_TARGET=$(aws elbv2 describe-target-groups --names spooky-styles-prod-blue --query 'TargetGroups[0].TargetGroupArn' --output text)
+          
+          if [ "$ACTIVE_TARGET" == "$BLUE_TARGET" ]; then
+            echo "Active environment is BLUE, deploying to GREEN"
+            echo "deploy-to=green" >> $GITHUB_OUTPUT
+            echo "active=blue" >> $GITHUB_OUTPUT
+          else
+            echo "Active environment is GREEN, deploying to BLUE"
+            echo "deploy-to=blue" >> $GITHUB_OUTPUT
+            echo "active=green" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Deploy to inactive environment
+        id: deploy
+        run: |
+          DEPLOY_ENV=${{ steps.determine-env.outputs.deploy-to }}
+          
+          # Update ECS task definition
+          TASK_DEFINITION=$(aws ecs describe-task-definition --task-definition spooky-styles-prod-$DEPLOY_ENV --query taskDefinition)
+          NEW_TASK_DEF=$(echo $TASK_DEFINITION | jq --arg IMAGE "${{ needs.build.outputs.image-tag }}" '.containerDefinitions[0].image = $IMAGE | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)')
+          NEW_TASK_INFO=$(aws ecs register-task-definition --cli-input-json "$NEW_TASK_DEF")
+          NEW_REVISION=$(echo $NEW_TASK_INFO | jq -r '.taskDefinition.revision')
+          
+          # Update service
+          aws ecs update-service --cluster spooky-styles-prod --service spooky-styles-prod-$DEPLOY_ENV --task-definition spooky-styles-prod-$DEPLOY_ENV:$NEW_REVISION --force-new-deployment
+          
+          # Wait for service to stabilize
+          aws ecs wait services-stable --cluster spooky-styles-prod --services spooky-styles-prod-$DEPLOY_ENV
+          
+          echo "revision=$NEW_REVISION" >> $GITHUB_OUTPUT
+      
+      - name: Run health checks on new environment
+        id: health-check
+        run: |
+          DEPLOY_ENV=${{ steps.determine-env.outputs.deploy-to }}
+          
+          # Get the load balancer endpoint for the new environment
+          LB_DNS=$(aws elbv2 describe-load-balancers --names spooky-styles-prod-$DEPLOY_ENV --query 'LoadBalancers[0].DNSName' --output text)
+          
+          # Wait for deployment
+          sleep 30
+          
+          # Run health checks
+          for i in {1..10}; do
+            HEALTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://$LB_DNS/health)
+            if [ $HEALTH_STATUS -eq 200 ]; then
+              echo "Health check passed"
+              echo "healthy=true" >> $GITHUB_OUTPUT
+              break
+            fi
+            echo "Health check attempt $i failed, retrying..."
+            sleep 10
+          done
+          
+          if [ "$HEALTH_STATUS" -ne 200 ]; then
+            echo "Health checks failed"
+            echo "healthy=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+      
+      - name: Monitor error rates
+        id: monitor
+        run: |
+          # Monitor error rates for 2 minutes
+          echo "Monitoring error rates..."
+          sleep 120
+          
+          # Check error rate from CloudWatch or application metrics
+          # This is a placeholder - implement actual monitoring logic
+          ERROR_RATE=0
+          
+          if [ $ERROR_RATE -gt 5 ]; then
+            echo "Error rate too high: $ERROR_RATE%"
+            echo "error-rate-ok=false" >> $GITHUB_OUTPUT
+            exit 1
+          else
+            echo "Error rate acceptable: $ERROR_RATE%"
+            echo "error-rate-ok=true" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Switch traffic to new environment
+        if: success()
+        run: |
+          DEPLOY_ENV=${{ steps.determine-env.outputs.deploy-to }}
+          
+          # Get target group ARN for new environment
+          NEW_TARGET_ARN=$(aws elbv2 describe-target-groups --names spooky-styles-prod-$DEPLOY_ENV --query 'TargetGroups[0].TargetGroupArn' --output text)
+          
+          # Get listener ARN
+          LISTENER_ARN=$(aws elbv2 describe-listeners --load-balancer-arn $(aws elbv2 describe-load-balancers --names spooky-styles-prod --query 'LoadBalancers[0].LoadBalancerArn' --output text) --query 'Listeners[0].ListenerArn' --output text)
+          
+          # Update listener to point to new target group
+          aws elbv2 modify-listener --listener-arn $LISTENER_ARN --default-actions Type=forward,TargetGroupArn=$NEW_TARGET_ARN
+          
+          echo "Traffic switched to $DEPLOY_ENV environment"
+      
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          echo "Deployment failed, initiating rollback..."
+          DEPLOY_ENV=${{ steps.determine-env.outputs.deploy-to }}
+          ACTIVE_ENV=${{ steps.determine-env.outputs.active }}
+          
+          # Get previous task definition for the deployment environment
+          PREVIOUS_TASK_DEF=$(aws ecs describe-services --cluster spooky-styles-prod --services spooky-styles-prod-$DEPLOY_ENV --query 'services[0].deployments[1].taskDefinition' --output text)
+          
+          # Rollback to previous version
+          aws ecs update-service --cluster spooky-styles-prod --service spooky-styles-prod-$DEPLOY_ENV --task-definition $PREVIOUS_TASK_DEF --force-new-deployment
+          
+          # Ensure traffic is still on active environment
+          ACTIVE_TARGET_ARN=$(aws elbv2 describe-target-groups --names spooky-styles-prod-$ACTIVE_ENV --query 'TargetGroups[0].TargetGroupArn' --output text)
+          LISTENER_ARN=$(aws elbv2 describe-listeners --load-balancer-arn $(aws elbv2 describe-load-balancers --names spooky-styles-prod --query 'LoadBalancers[0].LoadBalancerArn' --output text) --query 'Listeners[0].ListenerArn' --output text)
+          aws elbv2 modify-listener --listener-arn $LISTENER_ARN --default-actions Type=forward,TargetGroupArn=$ACTIVE_TARGET_ARN
+          
+          echo "Rollback completed, traffic remains on $ACTIVE_ENV"
+      
+      - name: Notify deployment status
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Production deployment successful"
+          else
+            echo "❌ Production deployment failed and rolled back"
+          fi

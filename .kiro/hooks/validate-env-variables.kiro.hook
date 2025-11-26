@@ -1,0 +1,22 @@
+{
+  "enabled": true,
+  "name": "Validate ENV Variables",
+  "description": "When .env files are modified, this hook validates that all required environment variables are present and properly configured",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      ".env",
+      ".env.example",
+      ".env.production",
+      ".env.staging",
+      "backend/.env",
+      "frontend/.env",
+      "frontend/.env.example"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "An .env file has been modified. Please validate that all required environment variables are present and properly configured. Check for:\n\n1. Required backend variables (DATABASE_URL, REDIS_URL, JWT_SECRET, STRIPE_SECRET_KEY, AWS credentials)\n2. Required frontend variables (VITE_API_URL, VITE_STRIPE_PUBLIC_KEY)\n3. Ensure no secrets are committed to version control\n4. Verify variables match the .env.example template\n5. Check for any missing or misconfigured variables\n6. Validate variable formats (URLs, keys, etc.)\n\nProvide a summary of any issues found and recommendations for fixes."
+  }
+}

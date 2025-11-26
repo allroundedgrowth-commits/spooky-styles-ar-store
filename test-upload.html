@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Image Upload</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .upload-section {
+            border: 2px dashed #ccc;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        button {
+            background: #8b5cf6;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #7c3aed;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .error {
+            background: #fee;
+            color: #c00;
+        }
+        .success {
+            background: #efe;
+            color: #060;
+        }
+        img {
+            max-width: 200px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎃 Test Image Upload to S3</h1>
+    
+    <div class="upload-section">
+        <h3>Step 1: Login as Admin</h3>
+        <input type="email" id="email" placeholder="Email" value="admin@spookystyles.com">
+        <input type="password" id="password" placeholder="Password" value="Admin123!">
+        <button onclick="login()">Login</button>
+        <div id="loginResult" class="result" style="display:none;"></div>
+    </div>
+
+    <div class="upload-section">
+        <h3>Step 2: Upload Image</h3>
+        <input type="file" id="imageFile" accept="image/*">
+        <button onclick="uploadImage()">Upload Image</button>
+        <div id="uploadResult" class="result" style="display:none;"></div>
+        <div id="imagePreview"></div>
+    </div>
+
+    <script>
+        let authToken = null;
+
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const resultDiv = document.getElementById('loginResult');
+            
+            try {
+                const response = await fetch('http://localhost:5000/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data.data?.token) {
+                    authToken = data.data.token;
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = '✅ Login successful!\nToken: ' + authToken.substring(0, 50) + '...';
+                    resultDiv.style.display = 'block';
+                } else {
+                    throw new Error(data.error?.message || 'Login failed');
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = '❌ Login failed: ' + error.message;
+                resultDiv.style.display = 'block';
+            }
+        }
+
+        async function uploadImage() {
+            const fileInput = document.getElementById('imageFile');
+            const resultDiv = document.getElementById('uploadResult');
+            const previewDiv = document.getElementById('imagePreview');
+            
+            if (!authToken) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = '❌ Please login first!';
+                resultDiv.style.display = 'block';
+                return;
+            }
+
+            if (!fileInput.files || !fileInput.files[0]) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = '❌ Please select an image file!';
+                resultDiv.style.display = 'block';
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append('image', file);
+
+            try {
+                resultDiv.textContent = '⏳ Uploading...';
+                resultDiv.className = 'result';
+                resultDiv.style.display = 'block';
+
+                const response = await fetch('http://localhost:5000/api/upload/image', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: formData
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = '✅ Upload successful!\n\n' + 
+                        'Original URL: ' + data.data.original.url + '\n' +
+                        'WebP URL: ' + data.data.webp.url + '\n' +
+                        'Size: ' + (data.data.webp.size / 1024).toFixed(2) + ' KB';
+                    
+                    // Show preview
+                    previewDiv.innerHTML = '<h4>Preview:</h4><img src="' + data.data.webp.url + '" alt="Uploaded image">';
+                } else {
+                    throw new Error(data.error?.message || 'Upload failed');
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = '❌ Upload failed: ' + error.message;
+                resultDiv.style.display = 'block';
+            }
+        }
+    </script>
+</body>
+</html>
