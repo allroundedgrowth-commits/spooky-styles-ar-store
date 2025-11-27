@@ -2,6 +2,8 @@ import pool from '../config/database.js';
 import productService from './product.service.js';
 import { Cart } from './cart.service.js';
 import { ValidationError, NotFoundError } from '../utils/errors.js';
+import { supabaseAdmin } from '../config/supabase.js';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 export interface Order {
   id: string;
@@ -27,7 +29,52 @@ export interface OrderWithItems extends Order {
   items: OrderItem[];
 }
 
+/**
+ * Order Service
+ * 
+ * RLS Integration Notes:
+ * - For user operations: Use Supabase client with user JWT (passed via req.supabase)
+ * - For admin operations: Use supabaseAdmin with service role key
+ * - RLS policies automatically filter orders based on user_id
+ * - Current implementation uses PostgreSQL pool for transaction support
+ * - Future enhancement: Migrate to Supabase for full RLS enforcement
+ */
 class OrderService {
+  /**
+   * Get orders for a specific user using Supabase with RLS
+   * This method demonstrates RLS enforcement - users can only see their own orders
+   */
+  async getOrdersByUserWithRLS(supabaseClient: SupabaseClient, userId: string): Promise<Order[]> {
+    const { data, error } = await supabaseClient
+      .from('orders')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw new Error(`Failed to fetch orders: ${error.message}`);
+    }
+
+    return data as Order[];
+  }
+
+  /**
+   * Get all orders (admin only) using Supabase admin client
+   * Service role key bypasses RLS
+   */
+  async getAllOrdersWithRLS(): Promise<Order[]> {
+    const { data, error } = await supabaseAdmin
+      .from('orders')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw new Error(`Failed to fetch all orders: ${error.message}`);
+    }
+
+    return data as Order[];
+  }
+
   async createOrder(
     userId: string,
     stripePaymentIntentId: string,

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Check Auth Token</title>
+</head>
+<body>
+    <h1>Auth Token Checker</h1>
+    <div id="result"></div>
+    
+    <script>
+        const token = localStorage.getItem('auth_token');
+        const resultDiv = document.getElementById('result');
+        
+        if (!token) {
+            resultDiv.innerHTML = '<p style="color: red;">❌ No token found in localStorage</p>';
+            resultDiv.innerHTML += '<p>Please login first</p>';
+        } else {
+            resultDiv.innerHTML = '<h3>Token found!</h3>';
+            resultDiv.innerHTML += '<p><strong>Token:</strong> ' + token.substring(0, 50) + '...</p>';
+            
+            // Decode JWT (simple base64 decode of payload)
+            try {
+                const parts = token.split('.');
+                if (parts.length === 3) {
+                    const payload = JSON.parse(atob(parts[1]));
+                    resultDiv.innerHTML += '<h3>Token Payload:</h3>';
+                    resultDiv.innerHTML += '<pre>' + JSON.stringify(payload, null, 2) + '</pre>';
+                    
+                    if (payload.isAdmin === true || payload.is_admin === true) {
+                        resultDiv.innerHTML += '<p style="color: green;">✅ Token shows admin = true</p>';
+                    } else {
+                        resultDiv.innerHTML += '<p style="color: red;">❌ Token shows admin = false or missing</p>';
+                        resultDiv.innerHTML += '<p><strong>FIX:</strong> Clear localStorage and login again</p>';
+                        resultDiv.innerHTML += '<button onclick="clearAndReload()">Clear Token & Reload</button>';
+                    }
+                }
+            } catch (e) {
+                resultDiv.innerHTML += '<p style="color: red;">Error decoding token: ' + e.message + '</p>';
+            }
+        }
+        
+        function clearAndReload() {
+            localStorage.removeItem('auth_token');
+            alert('Token cleared! Please login again.');
+            window.location.reload();
+        }
+    </script>
+</body>
+</html>

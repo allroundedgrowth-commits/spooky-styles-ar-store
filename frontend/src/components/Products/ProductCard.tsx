@@ -1,13 +1,32 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Product } from '../../types/product';
+import { useRealtimeInventory } from '../../hooks/useRealtimeInventory';
 
 interface ProductCardProps {
   product: Product;
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
-  const isOutOfStock = product.stock_quantity === 0;
+  // Local state for stock to update in real-time
+  const [currentStock, setCurrentStock] = useState(product.stock_quantity);
+
+  // Realtime inventory subscription
+  // Requirements: 2.1, 2.5
+  const { stock: realtimeStock } = useRealtimeInventory(
+    product.id,
+    product.stock_quantity
+  );
+
+  // Update local stock when realtime update arrives
+  // Requirement 2.1: Update stock display in real-time
+  useEffect(() => {
+    if (realtimeStock !== null) {
+      setCurrentStock(realtimeStock);
+    }
+  }, [realtimeStock]);
+
+  const isOutOfStock = currentStock === 0;
   const hasPromotion = product.promotional_price && product.promotional_price < product.price;
 
   return (
@@ -74,10 +93,11 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           )}
         </div>
 
-        {/* Stock Status */}
+        {/* Stock Status with Realtime Updates */}
+        {/* Requirements: 2.1, 2.5 - Display live stock count */}
         <div className="flex items-center justify-between">
           <span className={`text-sm ${isOutOfStock ? 'text-red-500' : 'text-halloween-green'}`}>
-            {isOutOfStock ? 'Out of Stock' : `${product.stock_quantity} in stock`}
+            {isOutOfStock ? 'Out of Stock' : `${currentStock} in stock`}
           </span>
           
           {/* Color Indicators */}

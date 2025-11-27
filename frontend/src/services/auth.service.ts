@@ -32,6 +32,7 @@ class AuthService {
       // Continue with local cleanup even if API fails
     } finally {
       localStorage.removeItem('auth_token');
+      // Don't remove remembered credentials on logout
     }
   }
 

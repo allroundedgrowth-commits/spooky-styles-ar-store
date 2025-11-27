@@ -4,6 +4,9 @@ import orderService from '../services/order.service';
 import { productService } from '../services/product.service';
 import { Order, OrderWithItems } from '../types/order';
 import { Product } from '../types/product';
+import { useRealtimeOrder } from '../hooks/useRealtimeOrders';
+import { OrderNotificationContainer } from '../components/Orders/OrderNotification';
+import { Wifi, WifiOff } from 'lucide-react';
 
 const OrderConfirmation: React.FC = () => {
   const navigate = useNavigate();
@@ -15,6 +18,39 @@ const OrderConfirmation: React.FC = () => {
 
   const paymentIntentId = searchParams.get('payment_intent');
   const orderId = searchParams.get('order_id');
+
+  // Realtime order updates for this specific order
+  const {
+    order: realtimeOrder,
+    notifications,
+    isConnected,
+    clearNotifications,
+  } = useRealtimeOrder(orderId || '');
+
+  /**
+   * Update order status when Realtime updates arrive
+   * Requirement 3.1: Update order status display in real-time
+   */
+  useEffect(() => {
+    if (realtimeOrder && order) {
+      setOrder((prevOrder) => {
+        if (!prevOrder) return prevOrder;
+        return {
+          ...prevOrder,
+          status: realtimeOrder.status,
+          total: realtimeOrder.total,
+          updated_at: new Date(realtimeOrder.updated_at),
+        };
+      });
+    }
+  }, [realtimeOrder, order]);
+
+  /**
+   * Handle notification dismissal
+   */
+  const handleDismissNotification = () => {
+    clearNotifications();
+  };
 
   useEffect(() => {
     const loadOrderDetails = async () => {
@@ -117,6 +153,12 @@ const OrderConfirmation: React.FC = () => {
 
   return (
     <div className="container mx-auto px-4 py-12">
+      {/* Order Notifications */}
+      <OrderNotificationContainer
+        notifications={notifications}
+        onDismiss={handleDismissNotification}
+      />
+
       {/* Success Header */}
       <div className="text-center mb-12">
         <div className="inline-flex items-center justify-center w-20 h-20 bg-green-500/20 rounded-full mb-4">
@@ -145,7 +187,26 @@ const OrderConfirmation: React.FC = () => {
       <div className="max-w-4xl mx-auto">
         {/* Order Details */}
         <div className="bg-halloween-darkPurple rounded-lg p-6 mb-6">
-          <h2 className="text-2xl font-bold text-white mb-4">Order Details</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-bold text-white">Order Details</h2>
+            
+            {/* Realtime Connection Status */}
+            {orderId && (
+              <div className="flex items-center gap-2">
+                {isConnected ? (
+                  <>
+                    <Wifi className="w-4 h-4 text-green-500" />
+                    <span className="text-sm text-green-500">Live Updates</span>
+                  </>
+                ) : (
+                  <>
+                    <WifiOff className="w-4 h-4 text-gray-500" />
+                    <span className="text-sm text-gray-500">Offline</span>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-gray-300">
             <div>
               <p className="text-sm text-gray-400">Order Number</p>
@@ -163,7 +224,12 @@ const OrderConfirmation: React.FC = () => {
             </div>
             <div>
               <p className="text-sm text-gray-400">Status</p>
-              <p className="font-semibold text-halloween-orange capitalize">{order.status}</p>
+              <div className="flex items-center gap-2">
+                <p className="font-semibold text-halloween-orange capitalize">{order.status}</p>
+                {isConnected && (
+                  <span className="inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse" title="Live updates enabled" />
+                )}
+              </div>
             </div>
             <div>
               <p className="text-sm text-gray-400">Total</p>

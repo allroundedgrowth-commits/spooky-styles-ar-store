@@ -1,6 +1,7 @@
 import pool from '../config/database.js';
 import redisClient from '../config/redis.js';
 import { NotFoundError, ValidationError } from '../utils/errors.js';
+import { supabaseAdmin } from '../config/supabase.js';
 
 export interface ProductColor {
   id: string;
@@ -256,36 +257,33 @@ class ProductService {
         throw new ValidationError('Promotional price must be less than regular price');
       }
 
-      const query = `
-        INSERT INTO products (
-          name, description, price, promotional_price, category, theme,
-          model_url, thumbnail_url, image_url, ar_image_url, stock_quantity, is_accessory
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-        RETURNING *
-      `;
+      // Use Supabase admin client for RLS-protected operations
+      const { data, error } = await supabaseAdmin
+        .from('products')
+        .insert({
+          name: input.name,
+          description: input.description || null,
+          price: input.price,
+          promotional_price: input.promotional_price || null,
+          category: input.category,
+          theme: input.theme,
+          model_url: input.model_url || null,
+          thumbnail_url: input.thumbnail_url,
+          image_url: input.image_url,
+          ar_image_url: input.ar_image_url,
+          stock_quantity: input.stock_quantity || 0,
+          is_accessory: input.is_accessory || false,
+        })
+        .select()
+        .single();
 
-      const values = [
-        input.name,
-        input.description || null,
-        input.price,
-        input.promotional_price || null,
-        input.category,
-        input.theme,
-        input.model_url || null,
-        input.thumbnail_url,
-        input.image_url,
-        input.ar_image_url,
-        input.stock_quantity || 0,
-        input.is_accessory || false,
-      ];
-
-      const result = await pool.query(query, values);
-      const product = result.rows[0];
+      if (error) {
+        throw new Error(`Failed to create product: ${error.message}`);
+      }
 
       await this.invalidateProductCache();
 
-      return product;
+      return data as Product;
     } catch (error) {
       console.error('Error creating product:', error);
       throw error;
@@ -415,8 +413,13 @@ class ProductService {
     try {
       await this.getProductById(id);
 
+      console.log(`[ProductService] Deleting product ${id}...`);
+      
+      // Delete product from database (CASCADE will handle related records)
       const query = 'DELETE FROM products WHERE id = $1';
-      await pool.query(query, [id]);
+      const result = await pool.query(query, [id]);
+      
+      console.log(`[ProductService] Delete result:`, result.rowCount, 'rows affected');
 
       await this.invalidateProductCache();
       
@@ -424,8 +427,10 @@ class ProductService {
       if (redisClient.isOpen) {
         await redisClient.del(`product:${id}`);
       }
+      
+      console.log(`[ProductService] ✅ Product ${id} deleted successfully`);
     } catch (error) {
-      console.error('Error deleting product:', error);
+      console.error('[ProductService] ❌ Error deleting product:', error);
       throw error;
     }
   }

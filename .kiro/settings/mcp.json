@@ -2,7 +2,7 @@
   "mcpServers": {
     "postgres": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-postgres", "postgresql://postgres.yreqvwoiuykxfxxgdusw:KIROWEEN1!@aws-1-eu-central-2.pooler.supabase.com:5432/postgres"],
+      "args": ["-y", "@modelcontextprotocol/server-postgres", "postgresql://postgres.yreqvwoiuykxfxxgdusw:SamuelKitaka1!@aws-1-eu-central-2.pooler.supabase.com:5432/postgres"],
       "disabled": false,
       "autoApprove": ["list_tables", "describe_table", "read"]
     },

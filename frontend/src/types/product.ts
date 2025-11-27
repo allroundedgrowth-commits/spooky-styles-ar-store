@@ -18,6 +18,11 @@ export interface Product {
   model_url: string;
   thumbnail_url: string;
   image_url?: string;
+  image_url_secondary?: string;
+  image_url_tertiary?: string;
+  image_alt_text?: string;
+  image_alt_text_secondary?: string;
+  image_alt_text_tertiary?: string;
   ar_image_url?: string;
   stock_quantity: number;
   is_accessory: boolean;

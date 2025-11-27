@@ -33,4 +33,5 @@ export interface AuthToken {
 export interface JWTPayload {
   userId: string;
   email: string;
+  isAdmin: boolean;
 }

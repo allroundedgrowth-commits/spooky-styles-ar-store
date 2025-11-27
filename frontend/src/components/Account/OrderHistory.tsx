@@ -1,11 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import orderService from '../../services/order.service';
 import { Order } from '../../types/order';
+import { useRealtimeOrders } from '../../hooks/useRealtimeOrders';
+import { OrderNotificationContainer } from '../Orders/OrderNotification';
+import { useUserStore } from '../../store/userStore';
+import { Wifi, WifiOff } from 'lucide-react';
 
 const OrderHistory: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const { user } = useUserStore();
+
+  // Realtime order updates
+  const {
+    orders: realtimeOrders,
+    notifications,
+    isConnected,
+    clearNotifications,
+  } = useRealtimeOrders(user?.id);
 
   useEffect(() => {
     loadOrders();
@@ -23,6 +36,37 @@ const OrderHistory: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  /**
+   * Update orders list when Realtime updates arrive
+   * Requirement 3.1: Display live order status updates
+   * Requirement 3.3: Update order list in real-time
+   */
+  useEffect(() => {
+    if (realtimeOrders.size > 0) {
+      setOrders((prevOrders) =>
+        prevOrders.map((order) => {
+          const realtimeUpdate = realtimeOrders.get(order.id);
+          if (realtimeUpdate) {
+            return {
+              ...order,
+              status: realtimeUpdate.status,
+              total: realtimeUpdate.total,
+              updated_at: new Date(realtimeUpdate.updated_at),
+            };
+          }
+          return order;
+        })
+      );
+    }
+  }, [realtimeOrders]);
+
+  /**
+   * Handle notification dismissal
+   */
+  const handleDismissNotification = (orderId: string) => {
+    clearNotifications();
   };
 
   const formatDate = (date: Date) => {
@@ -90,7 +134,31 @@ const OrderHistory: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <h3 className="text-2xl font-bold text-halloween-orange mb-6">Order History</h3>
+      {/* Order Notifications */}
+      <OrderNotificationContainer
+        notifications={notifications}
+        onDismiss={handleDismissNotification}
+      />
+
+      {/* Header with Realtime Status */}
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-2xl font-bold text-halloween-orange">Order History</h3>
+        
+        {/* Realtime Connection Status */}
+        <div className="flex items-center gap-2">
+          {isConnected ? (
+            <>
+              <Wifi className="w-4 h-4 text-green-500" />
+              <span className="text-sm text-green-500">Live Updates</span>
+            </>
+          ) : (
+            <>
+              <WifiOff className="w-4 h-4 text-gray-500" />
+              <span className="text-sm text-gray-500">Offline</span>
+            </>
+          )}
+        </div>
+      </div>
       
       {orders.map((order) => (
         <div

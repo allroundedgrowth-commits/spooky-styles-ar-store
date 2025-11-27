@@ -10,11 +10,23 @@ interface LoginFormProps {
 const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onSwitchToRegister }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
 
   const { setUser } = useUserStore();
+
+  // Load saved credentials on mount
+  React.useEffect(() => {
+    const savedEmail = localStorage.getItem('remembered_email');
+    const savedPassword = localStorage.getItem('remembered_password');
+    if (savedEmail && savedPassword) {
+      setEmail(savedEmail);
+      setPassword(savedPassword);
+      setRememberMe(true);
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,6 +37,15 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onSwitchToRegister }) 
     try {
       const authData = await authService.login({ email, password });
       setUser(authData.user);
+      
+      // Handle remember me
+      if (rememberMe) {
+        localStorage.setItem('remembered_email', email);
+        localStorage.setItem('remembered_password', password);
+      } else {
+        localStorage.removeItem('remembered_email');
+        localStorage.removeItem('remembered_password');
+      }
       
       if (onSuccess) {
         onSuccess();
@@ -75,6 +96,19 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onSwitchToRegister }) 
             className="w-full px-4 py-2 bg-halloween-black border border-halloween-purple/50 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-halloween-orange"
             placeholder="••••••••"
           />
+        </div>
+
+        <div className="flex items-center">
+          <input
+            type="checkbox"
+            id="rememberMe"
+            checked={rememberMe}
+            onChange={(e) => setRememberMe(e.target.checked)}
+            className="w-4 h-4 bg-halloween-black border border-halloween-purple/50 rounded text-halloween-orange focus:ring-2 focus:ring-halloween-orange"
+          />
+          <label htmlFor="rememberMe" className="ml-2 text-sm text-gray-300">
+            Remember me
+          </label>
         </div>
 
         {error && (

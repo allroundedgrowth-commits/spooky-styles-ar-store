@@ -88,12 +88,17 @@ apiClient.interceptors.response.use(
       // Handle specific status codes
       switch (status) {
         case 401:
-          // Unauthorized - clear token and redirect to login
+          // Unauthorized - clear token but keep remembered credentials
+          const rememberedEmail = localStorage.getItem('remembered_email');
+          const rememberedPassword = localStorage.getItem('remembered_password');
           localStorage.removeItem('auth_token');
+          if (rememberedEmail) localStorage.setItem('remembered_email', rememberedEmail);
+          if (rememberedPassword) localStorage.setItem('remembered_password', rememberedPassword);
+          
           if (window.location.pathname !== '/account') {
             window.location.href = '/account';
           }
-          throw new APIError('Unauthorized. Please log in again.', 401, error);
+          throw new APIError('Session expired. Please log in again.', 401, error);
         
         case 403:
           throw new APIError('Access denied. You do not have permission to perform this action.', 403, error);
