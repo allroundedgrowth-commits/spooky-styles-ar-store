@@ -108,7 +108,7 @@ export class Simple2DAREngine {
     this.config = {
       wigImageUrl: '',
       scale: 1.5,        // Larger scale for better visibility
-      offsetY: 0.3,      // Positive value brings wig down to cover hair area properly
+      offsetY: 0.5,      // Controls forehead coverage (0 = at hairline, 1 = covers more forehead)
       offsetX: 0,
       opacity: 0.85,     // More opaque for better visibility
       enableHairFlattening: false,
@@ -559,13 +559,14 @@ export class Simple2DAREngine {
 
     // Fallback: assume face is in upper-center portion (portrait mode)
     // This works well for selfie-style photos
-    // Position for natural wig placement - covers top of head, face remains visible
+    // Return HAIRLINE position (top of forehead), not full face
+    // This represents where the wig should START (bottom edge of wig)
     return {
-      x: width * 0.2,       // 20% from left (centered)
-      y: height * 0.05,     // 5% from top (top of head area)
-      width: width * 0.6,   // 60% of width (head width)
-      height: height * 0.35, // 35% of height (head area only, not full face)
-      confidence: 0.7,
+      x: width * 0.15,       // 15% from left (centered, slightly wider)
+      y: height * 0.15,      // 15% from top (hairline/forehead area)
+      width: width * 0.7,    // 70% of width (head width including hair)
+      height: height * 0.15, // Small height - just the hairline reference point
+      confidence: 0.6,
     };
   }
 
@@ -675,7 +676,7 @@ export class Simple2DAREngine {
 
   /**
    * Draw wig using precise facial landmarks
-   * Provides accurate positioning based on forehead, temples, and head shape
+   * Positions wig on TOP of head covering hair area, leaving face visible
    * Auto-adjusts size based on head dimensions
    */
   private drawWigWithLandmarks(
@@ -697,6 +698,11 @@ export class Simple2DAREngine {
       y: landmarks.foreheadTop.y * height,
     };
     
+    const hairlineCenter = {
+      x: landmarks.hairlineCenter.x * width,
+      y: landmarks.hairlineCenter.y * height,
+    };
+    
     const leftTemple = {
       x: landmarks.leftTemple.x * width,
       y: landmarks.leftTemple.y * height,
@@ -707,7 +713,7 @@ export class Simple2DAREngine {
       y: landmarks.rightTemple.y * height,
     };
 
-    // Calculate wig dimensions based on head landmarks with auto-scaling
+    // Calculate wig dimensions based on head width with auto-scaling
     const headWidth = Math.abs(rightTemple.x - leftTemple.x);
     const headWidthRatio = headWidth / width;
     const autoScaleAdjustment = this.calculateAutoScale(headWidthRatio);
@@ -719,11 +725,13 @@ export class Simple2DAREngine {
     // Center X between temples
     const centerX = (leftTemple.x + rightTemple.x) / 2;
     
-    // Position wig ABOVE the forehead to cover only hair area
-    // Start from top of head (above forehead), not at forehead
-    // offsetY is relative to wig height (negative = move up, positive = move down)
+    // KEY FIX: Position wig to sit ON TOP of head, covering hair area only
+    // Use hairline as the BOTTOM edge of where wig should reach
+    // Wig extends UPWARD from hairline to cover hair
+    // offsetY controls how far down the wig reaches (0 = at hairline, positive = covers more forehead)
     const wigX = centerX - wigWidth / 2 + (headWidth * offsetX);
-    const wigY = foreheadTop.y - wigHeight + (wigHeight * offsetY);
+    const wigBottomY = hairlineCenter.y + (wigHeight * offsetY * 0.3); // offsetY affects how much forehead is covered
+    const wigY = wigBottomY - wigHeight; // Wig extends upward from bottom edge
 
     // Save context state
     this.ctx.save();
@@ -762,20 +770,23 @@ export class Simple2DAREngine {
   ): void {
     if (!this.wigImage) return;
 
-    // Auto-calculate optimal scale based on face size
-    const faceWidthRatio = face.width / this.canvasElement.width;
-    const autoScaleAdjustment = this.calculateAutoScale(faceWidthRatio);
+    // Auto-calculate optimal scale based on head width
+    const headWidthRatio = face.width / this.canvasElement.width;
+    const autoScaleAdjustment = this.calculateAutoScale(headWidthRatio);
     const finalScale = scale * autoScaleAdjustment;
 
     // Calculate wig position and size with auto-scaling
     const wigWidth = face.width * finalScale;
     const wigHeight = (this.wigImage.height / this.wigImage.width) * wigWidth;
     
-    // Position wig ABOVE the detected face area to cover only hair
-    // Center horizontally, position vertically above face
+    // Position wig to sit ON TOP of head
+    // face.y represents the hairline (top of forehead)
+    // Wig extends UPWARD from hairline
     const wigX = face.x + (face.width - wigWidth) / 2 + (face.width * offsetX);
-    // Start from top of face, move wig up by its full height, then apply offset
-    const wigY = face.y - wigHeight + (wigHeight * offsetY);
+    // Wig bottom edge at hairline, extends upward
+    // offsetY controls how much forehead is covered (positive = more coverage)
+    const wigBottomY = face.y + (wigHeight * offsetY * 0.3);
+    const wigY = wigBottomY - wigHeight;
 
     // Save context state
     this.ctx.save();
