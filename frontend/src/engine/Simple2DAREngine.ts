@@ -108,7 +108,7 @@ export class Simple2DAREngine {
     this.config = {
       wigImageUrl: '',
       scale: 1.5,        // Larger scale for better visibility
-      offsetY: 0.5,      // Controls forehead coverage (0 = at hairline, 1 = covers more forehead)
+      offsetY: 0.2,      // Fine-tune vertical position (0.2 = slight overlap with forehead for natural look)
       offsetX: 0,
       opacity: 0.85,     // More opaque for better visibility
       enableHairFlattening: false,
@@ -693,11 +693,6 @@ export class Simple2DAREngine {
     const height = this.canvasElement.height;
 
     // Convert normalized coordinates to pixel coordinates
-    const foreheadTop = {
-      x: landmarks.foreheadTop.x * width,
-      y: landmarks.foreheadTop.y * height,
-    };
-    
     const hairlineCenter = {
       x: landmarks.hairlineCenter.x * width,
       y: landmarks.hairlineCenter.y * height,
@@ -725,13 +720,16 @@ export class Simple2DAREngine {
     // Center X between temples
     const centerX = (leftTemple.x + rightTemple.x) / 2;
     
-    // KEY FIX: Position wig to sit ON TOP of head, covering hair area only
-    // Use hairline as the BOTTOM edge of where wig should reach
-    // Wig extends UPWARD from hairline to cover hair
-    // offsetY controls how far down the wig reaches (0 = at hairline, positive = covers more forehead)
+    // CORRECT POSITIONING: Wig sits on head like a real wig
+    // The wig's BOTTOM edge should be at the hairline/forehead
+    // The wig extends UPWARD to cover the hair area
+    // offsetY allows fine-tuning (negative = higher up, positive = lower down)
     const wigX = centerX - wigWidth / 2 + (headWidth * offsetX);
-    const wigBottomY = hairlineCenter.y + (wigHeight * offsetY * 0.3); // offsetY affects how much forehead is covered
-    const wigY = wigBottomY - wigHeight; // Wig extends upward from bottom edge
+    
+    // Use hairline as the natural bottom edge of the wig
+    // Apply offsetY as a percentage of wig height for fine control
+    const wigBottomEdge = hairlineCenter.y + (wigHeight * offsetY);
+    const wigY = wigBottomEdge - wigHeight;
 
     // Save context state
     this.ctx.save();
@@ -779,14 +777,14 @@ export class Simple2DAREngine {
     const wigWidth = face.width * finalScale;
     const wigHeight = (this.wigImage.height / this.wigImage.width) * wigWidth;
     
-    // Position wig to sit ON TOP of head
+    // Position wig to sit ON TOP of head like a real wig
     // face.y represents the hairline (top of forehead)
-    // Wig extends UPWARD from hairline
+    // Wig's bottom edge sits at hairline, extends upward
     const wigX = face.x + (face.width - wigWidth) / 2 + (face.width * offsetX);
-    // Wig bottom edge at hairline, extends upward
-    // offsetY controls how much forehead is covered (positive = more coverage)
-    const wigBottomY = face.y + (wigHeight * offsetY * 0.3);
-    const wigY = wigBottomY - wigHeight;
+    
+    // Apply offsetY as percentage of wig height for fine control
+    const wigBottomEdge = face.y + (wigHeight * offsetY);
+    const wigY = wigBottomEdge - wigHeight;
 
     // Save context state
     this.ctx.save();

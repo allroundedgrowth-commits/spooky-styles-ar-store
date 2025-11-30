@@ -12,7 +12,7 @@ export const Simple2DARTryOn: React.FC = () => {
   const [product, setProduct] = useState<Product | null>(null);
   const [selectedColor, setSelectedColor] = useState<string>('');
   const [scale, setScale] = useState(1.5);
-  const [offsetY, setOffsetY] = useState(0.5);
+  const [offsetY, setOffsetY] = useState(0.2);
   const [offsetX, setOffsetX] = useState(0);
   const [opacity, setOpacity] = useState(0.85);
   const [useUploadedImage, setUseUploadedImage] = useState(false);
