@@ -271,10 +271,25 @@ class OrderService {
     }
   }
 
-  async getOrderByPaymentIntentId(paymentIntentId: string): Promise<Order | null> {
+  async getOrderByPaymentIntentId(paymentIntentId: string): Promise<OrderWithItems | null> {
     try {
       const result = await pool.query(
-        `SELECT * FROM orders WHERE stripe_payment_intent_id = $1`,
+        `SELECT o.*, 
+               json_agg(
+                 json_build_object(
+                   'id', oi.id,
+                   'order_id', oi.order_id,
+                   'product_id', oi.product_id,
+                   'quantity', oi.quantity,
+                   'price', oi.price,
+                   'customizations', oi.customizations,
+                   'created_at', oi.created_at
+                 )
+               ) as items
+        FROM orders o
+        LEFT JOIN order_items oi ON o.id = oi.order_id
+        WHERE o.stripe_payment_intent_id = $1
+        GROUP BY o.id`,
         [paymentIntentId]
       );
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Simple2DAREngine, ARConfig } from '../engine/Simple2DAREngine';
+import { Simple2DAREngine, ARConfig, AdjustmentMode, HairProcessingState } from '../engine/Simple2DAREngine';
 
 export const useSimple2DAR = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -10,6 +10,7 @@ export const useSimple2DAR = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cameraPermission, setCameraPermission] = useState<'granted' | 'denied' | 'prompt'>('prompt');
+  const [hairProcessingState, setHairProcessingState] = useState<HairProcessingState | null>(null);
 
   useEffect(() => {
     return () => {
@@ -94,13 +95,51 @@ export const useSimple2DAR = () => {
     return engineRef.current.takeScreenshot();
   };
 
+  const setAdjustmentMode = (mode: AdjustmentMode) => {
+    if (engineRef.current) {
+      engineRef.current.setAdjustmentMode(mode);
+      // Update state after mode change
+      const state = engineRef.current.getHairProcessingState();
+      setHairProcessingState(state);
+    }
+  };
+
+  const getHairProcessingState = (): HairProcessingState | null => {
+    if (engineRef.current) {
+      return engineRef.current.getHairProcessingState();
+    }
+    return null;
+  };
+
+  const isHairFlatteningEnabled = (): boolean => {
+    if (engineRef.current) {
+      return engineRef.current.isHairFlatteningEnabled();
+    }
+    return false;
+  };
+
   const stop = () => {
     if (engineRef.current) {
       engineRef.current.dispose();
       engineRef.current = null;
       setIsInitialized(false);
+      setHairProcessingState(null);
     }
   };
+
+  // Poll hair processing state periodically when initialized
+  useEffect(() => {
+    if (!isInitialized || !engineRef.current) return;
+
+    const interval = setInterval(() => {
+      if (engineRef.current) {
+        const state = engineRef.current.getHairProcessingState();
+        setHairProcessingState(state);
+      }
+    }, 100); // Update every 100ms
+
+    return () => clearInterval(interval);
+  }, [isInitialized]);
 
   return {
     videoRef,
@@ -109,12 +148,16 @@ export const useSimple2DAR = () => {
     isLoading,
     error,
     cameraPermission,
+    hairProcessingState,
     initialize,
     loadWig,
     loadUserImage,
     switchToCamera,
     updateConfig,
     takeScreenshot,
+    setAdjustmentMode,
+    getHairProcessingState,
+    isHairFlatteningEnabled,
     stop,
   };
 };

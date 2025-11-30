@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Login Fix</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #0a0a0a;
+            color: #fff;
+        }
+        .test-section {
+            background: #1a1a1a;
+            border: 2px solid #8b5cf6;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        h1 {
+            color: #f97316;
+        }
+        h2 {
+            color: #8b5cf6;
+        }
+        button {
+            background: #f97316;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #ea580c;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .success {
+            background: #10b981;
+            color: white;
+        }
+        .error {
+            background: #ef4444;
+            color: white;
+        }
+        .info {
+            background: #3b82f6;
+            color: white;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            background: #0a0a0a;
+            border: 1px solid #8b5cf6;
+            color: white;
+            border-radius: 5px;
+        }
+        label {
+            display: block;
+            margin-top: 10px;
+            color: #8b5cf6;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎃 Login Fix Test Suite</h1>
+    <p>Test the fixed login system with proper response format handling</p>
+
+    <div class="test-section">
+        <h2>Test 1: Login with Admin Credentials</h2>
+        <label>Email:</label>
+        <input type="email" id="email1" value="admin@spookywigs.com">
+        <label>Password:</label>
+        <input type="password" id="password1" value="SpookyAdmin2024!">
+        <button onclick="testLogin()">Test Login</button>
+        <div id="result1" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 2: Login with Wrong Password</h2>
+        <label>Email:</label>
+        <input type="email" id="email2" value="admin@spookywigs.com">
+        <label>Password:</label>
+        <input type="password" id="password2" value="wrongpassword">
+        <button onclick="testWrongPassword()">Test Wrong Password</button>
+        <div id="result2" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 3: Check Response Format</h2>
+        <p>This test verifies the backend returns both response formats</p>
+        <button onclick="testResponseFormat()">Test Response Format</button>
+        <div id="result3" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 4: Verify Token</h2>
+        <p>Login and verify the token works for authenticated requests</p>
+        <button onclick="testTokenVerification()">Test Token</button>
+        <div id="result4" class="result"></div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000/api';
+        let authToken = null;
+
+        async function testLogin() {
+            const resultDiv = document.getElementById('result1');
+            resultDiv.className = 'result info';
+            resultDiv.textContent = 'Testing login...';
+
+            try {
+                const email = document.getElementById('email1').value;
+                const password = document.getElementById('password1').value;
+
+                const response = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password }),
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    authToken = data.token || data.data?.token;
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = `✅ Login Successful!\n\n` +
+                        `Response:\n${JSON.stringify(data, null, 2)}\n\n` +
+                        `Token: ${authToken ? 'Present ✓' : 'Missing ✗'}\n` +
+                        `User: ${data.user?.email || data.data?.user?.email || 'Missing ✗'}`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `❌ Login Failed\n\n${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ Error: ${error.message}`;
+            }
+        }
+
+        async function testWrongPassword() {
+            const resultDiv = document.getElementById('result2');
+            resultDiv.className = 'result info';
+            resultDiv.textContent = 'Testing wrong password...';
+
+            try {
+                const email = document.getElementById('email2').value;
+                const password = document.getElementById('password2').value;
+
+                const response = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password }),
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = `✅ Correctly Rejected Invalid Credentials\n\n` +
+                        `Status: ${response.status}\n` +
+                        `Error: ${data.error?.message || 'Unknown error'}`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `❌ Should have rejected invalid credentials!\n\n${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ Error: ${error.message}`;
+            }
+        }
+
+        async function testResponseFormat() {
+            const resultDiv = document.getElementById('result3');
+            resultDiv.className = 'result info';
+            resultDiv.textContent = 'Testing response format...';
+
+            try {
+                const response = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: 'admin@spookywigs.com',
+                        password: 'SpookyAdmin2024!'
+                    }),
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    const checks = {
+                        'Has message': !!data.message,
+                        'Has token (root)': !!data.token,
+                        'Has user (root)': !!data.user,
+                        'Has data object': !!data.data,
+                        'Has data.token': !!data.data?.token,
+                        'Has data.user': !!data.data?.user,
+                    };
+
+                    const allPassed = Object.values(checks).every(v => v);
+
+                    resultDiv.className = allPassed ? 'result success' : 'result error';
+                    resultDiv.textContent = `${allPassed ? '✅' : '❌'} Response Format Check\n\n` +
+                        Object.entries(checks)
+                            .map(([key, value]) => `${value ? '✓' : '✗'} ${key}`)
+                            .join('\n') +
+                        `\n\nFull Response:\n${JSON.stringify(data, null, 2)}`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `❌ Login failed: ${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ Error: ${error.message}`;
+            }
+        }
+
+        async function testTokenVerification() {
+            const resultDiv = document.getElementById('result4');
+            resultDiv.className = 'result info';
+            resultDiv.textContent = 'Testing token verification...';
+
+            try {
+                // First login to get token
+                if (!authToken) {
+                    const loginResponse = await fetch(`${API_URL}/auth/login`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            email: 'admin@spookywigs.com',
+                            password: 'SpookyAdmin2024!'
+                        }),
+                    });
+
+                    const loginData = await loginResponse.json();
+                    authToken = loginData.token || loginData.data?.token;
+                }
+
+                // Test token with /auth/me endpoint
+                const response = await fetch(`${API_URL}/auth/me`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                    },
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = `✅ Token Verification Successful!\n\n` +
+                        `User Data:\n${JSON.stringify(data, null, 2)}`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `❌ Token Verification Failed\n\n${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ Error: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>

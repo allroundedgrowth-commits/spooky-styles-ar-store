@@ -49,10 +49,9 @@ const CheckoutForm: React.FC<{ clientSecret: string; onValidate: () => boolean }
         setErrorMessage(error.message || 'Payment failed');
         setProcessing(false);
       } else if (paymentIntent && paymentIntent.status === 'succeeded') {
-        // Payment successful - wait a moment for webhook to create order, then navigate
-        setTimeout(() => {
-          navigate(`/order-confirmation?payment_intent=${paymentIntent.id}&order_id=${paymentIntent.id}`);
-        }, 2000);
+        // Payment successful - navigate to confirmation page
+        // The confirmation page will poll for the order to be created by webhook
+        navigate(`/order-confirmation?payment_intent=${paymentIntent.id}`);
       }
     } catch (err: any) {
       setErrorMessage(err.message || 'An unexpected error occurred');
@@ -156,9 +155,13 @@ const Checkout: React.FC = () => {
               productMap.set(productId, product);
             } catch (err) {
               console.error(`Failed to load product ${productId}:`, err);
+              // Continue even if product loading fails
             }
           })
-        );
+        ).catch(err => {
+          console.error('Error loading products:', err);
+          // Continue even if some products fail to load
+        });
         
         setProducts(productMap);
 
@@ -167,8 +170,8 @@ const Checkout: React.FC = () => {
           return total + (item.price * item.quantity);
         }, 0) * 100); // Convert to cents
 
-        // Create payment intent with guest info metadata
-        const paymentIntent = await paymentService.createPaymentIntent(totalAmount, guestInfo);
+        // Create payment intent (guest info will be added when form is submitted)
+        const paymentIntent = await paymentService.createPaymentIntent(totalAmount);
         setClientSecret(paymentIntent.clientSecret);
         setLoading(false);
       } catch (err: any) {
@@ -235,6 +238,10 @@ const Checkout: React.FC = () => {
                           src={product.thumbnail_url}
                           alt={product.name}
                           className="w-full h-full object-cover rounded"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                            e.currentTarget.parentElement!.innerHTML = '<div class="w-full h-full bg-halloween-purple/20 rounded flex items-center justify-center text-xs text-gray-400">No Image</div>';
+                          }}
                         />
                       ) : (
                         <div className="w-full h-full bg-halloween-purple/20 rounded animate-pulse" />

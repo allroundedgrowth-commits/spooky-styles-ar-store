@@ -257,33 +257,36 @@ class ProductService {
         throw new ValidationError('Promotional price must be less than regular price');
       }
 
-      // Use Supabase admin client for RLS-protected operations
-      const { data, error } = await supabaseAdmin
-        .from('products')
-        .insert({
-          name: input.name,
-          description: input.description || null,
-          price: input.price,
-          promotional_price: input.promotional_price || null,
-          category: input.category,
-          theme: input.theme,
-          model_url: input.model_url || null,
-          thumbnail_url: input.thumbnail_url,
-          image_url: input.image_url,
-          ar_image_url: input.ar_image_url,
-          stock_quantity: input.stock_quantity || 0,
-          is_accessory: input.is_accessory || false,
-        })
-        .select()
-        .single();
+      const query = `
+        INSERT INTO products (
+          name, description, price, promotional_price, category, theme,
+          model_url, thumbnail_url, image_url, ar_image_url, stock_quantity, is_accessory
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        RETURNING *
+      `;
 
-      if (error) {
-        throw new Error(`Failed to create product: ${error.message}`);
-      }
+      const values = [
+        input.name,
+        input.description || null,
+        input.price,
+        input.promotional_price || null,
+        input.category,
+        input.theme,
+        input.model_url || null,
+        input.thumbnail_url,
+        input.image_url,
+        input.ar_image_url,
+        input.stock_quantity || 0,
+        input.is_accessory || false,
+      ];
+
+      const result = await pool.query(query, values);
+      const product = result.rows[0];
 
       await this.invalidateProductCache();
 
-      return data as Product;
+      return product;
     } catch (error) {
       console.error('Error creating product:', error);
       throw error;
@@ -561,16 +564,29 @@ class ProductService {
   private async invalidateProductCache(): Promise<void> {
     // Skip if Redis is not connected
     if (!redisClient.isOpen) {
+      console.log('[ProductService] Redis not connected, skipping cache invalidation');
       return;
     }
     
     try {
-      const keys = await redisClient.keys('products:*');
-      if (keys.length > 0) {
-        await redisClient.del(keys);
+      console.log('[ProductService] Invalidating product cache...');
+      
+      // Invalidate both product-specific cache and API response cache
+      const patterns = ['products:*', 'api:*products*', 'api:/*'];
+      let totalDeleted = 0;
+      
+      for (const pattern of patterns) {
+        const keys = await redisClient.keys(pattern);
+        if (keys.length > 0) {
+          await redisClient.del(keys);
+          totalDeleted += keys.length;
+          console.log(`[ProductService] Deleted ${keys.length} keys matching '${pattern}'`);
+        }
       }
+      
+      console.log(`[ProductService] ✅ Cache invalidated successfully (${totalDeleted} keys deleted)`);
     } catch (error) {
-      console.error('Error invalidating product cache:', error);
+      console.error('[ProductService] ❌ Error invalidating product cache:', error);
     }
   }
 }

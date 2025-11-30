@@ -61,32 +61,36 @@ const OrderConfirmation: React.FC = () => {
       }
 
       try {
-        // If we have orderId, fetch directly
-        // Otherwise, we'll need to fetch orders and find by payment intent
         let orderData: OrderWithItems;
         
         if (orderId) {
+          // Direct order lookup by ID (for authenticated users)
           orderData = await orderService.getOrderById(orderId);
         } else if (paymentIntentId) {
-          // Fetch all orders and find the one with matching payment intent
-          const orders = await orderService.getOrders();
-          const matchingOrder = orders.find((o: Order) => o.stripe_payment_intent_id === paymentIntentId);
+          // Guest checkout - lookup by payment intent ID
+          // Retry logic for webhook processing delay
+          let retries = 0;
+          const maxRetries = 5;
           
-          if (!matchingOrder) {
-            // Order might not be created yet by webhook, wait and retry
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            const ordersRetry = await orderService.getOrders();
-            const matchingOrderRetry = ordersRetry.find((o: Order) => o.stripe_payment_intent_id === paymentIntentId);
-            
-            if (!matchingOrderRetry) {
-              setError('Order is being processed. Please check your account page in a moment.');
-              setLoading(false);
-              return;
+          while (retries < maxRetries) {
+            try {
+              orderData = await orderService.getOrderByPaymentIntent(paymentIntentId);
+              break; // Success, exit retry loop
+            } catch (err: any) {
+              if (err.response?.status === 404 && retries < maxRetries - 1) {
+                // Order not created yet by webhook, wait and retry
+                retries++;
+                await new Promise(resolve => setTimeout(resolve, 2000));
+              } else {
+                throw err; // Give up after max retries or other errors
+              }
             }
-            
-            orderData = await orderService.getOrderById(matchingOrderRetry.id);
-          } else {
-            orderData = await orderService.getOrderById(matchingOrder.id);
+          }
+          
+          if (!orderData!) {
+            setError('Order is being processed. Please check back in a moment or contact support with your payment confirmation.');
+            setLoading(false);
+            return;
           }
         } else {
           setError('No order information provided');

@@ -23,6 +23,10 @@ class OrderService {
   async updateOrderStatus(id: string, status: Order['status']): Promise<Order> {
     return await api.orders.updateOrderStatus(id, status);
   }
+
+  async getOrderByPaymentIntent(paymentIntentId: string): Promise<OrderWithItems> {
+    return await api.orders.getOrderByPaymentIntent(paymentIntentId);
+  }
 }
 
 export default new OrderService();

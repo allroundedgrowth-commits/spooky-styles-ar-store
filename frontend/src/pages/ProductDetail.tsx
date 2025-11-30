@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { productService } from '../services/product.service';
 import { Product } from '../types/product';
 import { useRealtimeInventory } from '../hooks/useRealtimeInventory';
+import { useCartStore } from '../store/cartStore';
 
 const ProductDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -12,6 +13,9 @@ const ProductDetail: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<string>('');
+  const [addingToCart, setAddingToCart] = useState(false);
+  
+  const { addItem } = useCartStore();
 
   // Realtime inventory subscription
   // Requirements: 2.1, 2.3, 2.5
@@ -89,6 +93,29 @@ const ProductDetail: React.FC = () => {
 
   const isOutOfStock = product.stock_quantity === 0;
   const hasPromotion = product.promotional_price && product.promotional_price < product.price;
+
+  const handleAddToCart = async () => {
+    if (!product || isOutOfStock) return;
+
+    try {
+      setAddingToCart(true);
+      await addItem({
+        productId: product.id,
+        quantity: 1,
+        customizations: {
+          color: selectedColor || undefined,
+        },
+      });
+      
+      // Show success message (you can add a toast notification here)
+      alert('Added to cart!');
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      alert('Failed to add to cart. Please try again.');
+    } finally {
+      setAddingToCart(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-halloween-black">
@@ -255,14 +282,15 @@ const ProductDetail: React.FC = () => {
               </Link>
               
               <button
-                disabled={isOutOfStock}
+                onClick={handleAddToCart}
+                disabled={isOutOfStock || addingToCart}
                 className={`w-full px-6 py-4 rounded-lg font-semibold transition-colors ${
-                  isOutOfStock
+                  isOutOfStock || addingToCart
                     ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
                     : 'bg-halloween-purple text-white hover:bg-halloween-purple/80 shadow-lg hover:shadow-xl'
                 }`}
               >
-                {isOutOfStock ? 'Out of Stock' : 'Add to Cart'}
+                {isOutOfStock ? 'Out of Stock' : addingToCart ? 'Adding...' : 'Add to Cart'}
               </button>
             </div>
 

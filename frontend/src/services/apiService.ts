@@ -22,18 +22,30 @@ export const authAPI = {
   /**
    * Register a new user account
    */
-  register: (data: RegisterRequest) =>
-    apiCall<{ data: AuthResponse }>('auth.register', () =>
+  register: async (data: RegisterRequest) => {
+    const response = await apiCall<{ token: string; user: any; data?: AuthResponse }>('auth.register', () =>
       apiClient.post('/auth/register', data)
-    ).then(res => res.data),
+    );
+    // Handle both response formats for backward compatibility
+    if (response.data) {
+      return response.data;
+    }
+    return { token: response.token, user: response.user };
+  },
 
   /**
    * Login with email and password
    */
-  login: (data: LoginRequest) =>
-    apiCall<{ data: AuthResponse }>('auth.login', () =>
+  login: async (data: LoginRequest) => {
+    const response = await apiCall<{ token: string; user: any; data?: AuthResponse }>('auth.login', () =>
       apiClient.post('/auth/login', data)
-    ).then(res => res.data),
+    );
+    // Handle both response formats for backward compatibility
+    if (response.data) {
+      return response.data;
+    }
+    return { token: response.token, user: response.user };
+  },
 
   /**
    * Logout current user
@@ -236,6 +248,16 @@ export const orderAPI = {
   updateOrderStatus: async (id: string, status: Order['status']) => {
     const response = await apiCall<{ success: boolean; data: Order }>(`orders.updateStatus.${id}`, () =>
       apiClient.put(`/orders/${id}/status`, { status })
+    );
+    return response.data;
+  },
+
+  /**
+   * Get order by payment intent ID (public endpoint for guest checkout)
+   */
+  getOrderByPaymentIntent: async (paymentIntentId: string) => {
+    const response = await apiCall<{ success: boolean; data: Order }>(`orders.getByPaymentIntent.${paymentIntentId}`, () =>
+      apiClient.get(`/orders/payment-intent/${paymentIntentId}`)
     );
     return response.data;
   },

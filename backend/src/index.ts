@@ -2,6 +2,12 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
+
+// Allow self-signed certificates for Supabase pooler
+if (process.env.DATABASE_URL?.includes('supabase') || process.env.DATABASE_URL?.includes('pooler')) {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+  console.log('🔓 TLS certificate validation disabled for Supabase');
+}
 import { connectRedis } from './config/redis.js';
 import getCorsOptions from './config/cors.js';
 import authRoutes from './routes/auth.routes.js';

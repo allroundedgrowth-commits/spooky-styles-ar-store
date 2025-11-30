@@ -4,10 +4,11 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!supabaseUrl || !supabaseServiceRoleKey) {
-  throw new Error(
-    'Missing Supabase environment variables. Please check your .env file.'
-  );
+// Make Supabase optional - only required if using Supabase features
+const isSupabaseEnabled = supabaseUrl && supabaseServiceRoleKey;
+
+if (!isSupabaseEnabled) {
+  console.log('⚠️  Supabase not configured - using local PostgreSQL only');
 }
 
 /**
@@ -15,12 +16,14 @@ if (!supabaseUrl || !supabaseServiceRoleKey) {
  * Uses the service role key which bypasses Row Level Security (RLS)
  * Use this for admin operations only
  */
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
-  auth: {
-    persistSession: false,
-    autoRefreshToken: false,
-  },
-});
+export const supabaseAdmin = isSupabaseEnabled
+  ? createClient(supabaseUrl!, supabaseServiceRoleKey!, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    })
+  : null;
 
 /**
  * Create a Supabase client with a specific user's JWT token
@@ -31,8 +34,12 @@ export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
  */
 export const createSupabaseClientWithAuth = (
   jwtToken: string
-): SupabaseClient => {
-  const client = createClient(supabaseUrl, supabaseServiceRoleKey, {
+): SupabaseClient | null => {
+  if (!isSupabaseEnabled) {
+    return null;
+  }
+
+  const client = createClient(supabaseUrl!, supabaseServiceRoleKey!, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,

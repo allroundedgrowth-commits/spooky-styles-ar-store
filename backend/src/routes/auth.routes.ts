@@ -13,14 +13,19 @@ router.use(authLimiter);
 // Register new user
 router.post('/register', async (req: AuthRequest, res: Response, next) => {
   try {
+    console.log('[Auth] Registration attempt for:', req.body.email);
     const data: RegisterRequest = req.body;
     const result = await authService.register(data);
     
+    console.log('[Auth] Registration successful for:', result.user.email);
     res.status(201).json({
       message: 'User registered successfully',
+      token: result.token,
+      user: result.user,
       data: result,
     });
   } catch (error) {
+    console.error('[Auth] Registration failed:', error);
     next(error);
   }
 });
@@ -28,14 +33,19 @@ router.post('/register', async (req: AuthRequest, res: Response, next) => {
 // Login user
 router.post('/login', async (req: AuthRequest, res: Response, next) => {
   try {
+    console.log('[Auth] Login attempt for:', req.body.email);
     const data: LoginRequest = req.body;
     const result = await authService.login(data);
     
+    console.log('[Auth] Login successful for:', result.user.email);
     res.status(200).json({
       message: 'Login successful',
+      token: result.token,
+      user: result.user,
       data: result,
     });
   } catch (error) {
+    console.error('[Auth] Login failed:', error);
     next(error);
   }
 });

@@ -4,6 +4,7 @@ import { useSimple2DAR } from '../hooks/useSimple2DAR';
 import { productService } from '../services/product.service';
 import { Product } from '../types/product';
 import { useCartStore } from '../store/cartStore';
+import { VolumeScoreIndicator } from '../components/AR/VolumeScoreIndicator';
 
 export const Simple2DARTryOn: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -22,6 +23,7 @@ export const Simple2DARTryOn: React.FC = () => {
     isLoading,
     error,
     cameraPermission,
+    hairProcessingState,
     initialize,
     loadWig,
     loadUserImage,
@@ -186,6 +188,17 @@ export const Simple2DARTryOn: React.FC = () => {
                 ref={canvasRef}
                 className={`absolute inset-0 w-full h-full object-cover ${isInitialized ? 'block' : 'hidden'}`}
               />
+
+              {/* Volume Score Indicator - overlays on canvas when hair data is available */}
+              {isInitialized && hairProcessingState?.segmentationData && (
+                <div className="absolute top-4 right-4 z-10">
+                  <VolumeScoreIndicator
+                    score={hairProcessingState.segmentationData.volumeScore}
+                    category={hairProcessingState.segmentationData.volumeCategory}
+                    isVisible={true}
+                  />
+                </div>
+              )}
               
               {!isInitialized && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-6 z-10">

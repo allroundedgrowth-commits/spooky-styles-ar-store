@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@mediapipe/face_mesh": "^0.4.1633559619",
+    "@mediapipe/selfie_segmentation": "^0.1.1675465747",
     "@react-three/drei": "^9.80.0",
     "@react-three/fiber": "^8.13.0",
     "@stripe/react-stripe-js": "^2.3.0",

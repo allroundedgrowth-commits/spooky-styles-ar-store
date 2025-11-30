@@ -68,6 +68,9 @@ const Cart: React.FC = () => {
   };
 
   const handleCheckout = () => {
+    console.log('Navigating to checkout...');
+    console.log('Cart items:', cart?.items.length);
+    console.log('Loading:', loading, 'LoadingProducts:', loadingProducts);
     navigate('/checkout');
   };
 
@@ -253,11 +256,14 @@ const Cart: React.FC = () => {
             </div>
 
             <button
-              onClick={handleCheckout}
+              onClick={() => {
+                console.log('Checkout button clicked!');
+                handleCheckout();
+              }}
               disabled={loading || loadingProducts}
               className="w-full py-3 bg-halloween-orange text-white rounded-lg hover:bg-orange-600 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed blood-drip-orange glow-hover"
             >
-              Proceed to Checkout
+              {loading || loadingProducts ? 'Loading...' : 'Proceed to Checkout'}
             </button>
 
             <button

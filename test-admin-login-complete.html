@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #0a0a0a;
+            color: #fff;
+        }
+        .test-section {
+            background: #1a0033;
+            border: 2px solid #8b5cf6;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        button {
+            background: #f97316;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #ea580c;
+        }
+        .success {
+            color: #10b981;
+        }
+        .error {
+            color: #ef4444;
+        }
+        pre {
+            background: #000;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        input {
+            background: #000;
+            color: #fff;
+            border: 1px solid #8b5cf6;
+            padding: 8px;
+            border-radius: 4px;
+            margin: 5px;
+            width: 300px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎃 Admin Login Test</h1>
+
+    <div class="test-section">
+        <h2>Test Admin Login</h2>
+        <div>
+            <input type="email" id="email" value="admin@spookystyles.com" placeholder="Email">
+            <input type="password" id="password" value="admin123" placeholder="Password">
+        </div>
+        <button onclick="testLogin()">Test Login</button>
+        <button onclick="testUserLogin()">Test User Login</button>
+        <div id="loginResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Check Account Status</h2>
+        <button onclick="checkAccountStatus()">Check Admin Status</button>
+        <div id="statusResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Unlock Admin Account</h2>
+        <button onclick="unlockAccount()">Unlock Account</button>
+        <div id="unlockResult"></div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000/api';
+
+        async function testLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const resultDiv = document.getElementById('loginResult');
+            
+            resultDiv.innerHTML = '<p>Testing login...</p>';
+            
+            try {
+                const response = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <p class="success">✅ Login Successful!</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                        <p><strong>Is Admin:</strong> ${data.data.user.is_admin}</p>
+                        <p><strong>Token:</strong> ${data.data.token.substring(0, 20)}...</p>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <p class="error">❌ Login Failed</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <p class="error">❌ Error: ${error.message}</p>
+                `;
+            }
+        }
+
+        async function testUserLogin() {
+            const resultDiv = document.getElementById('loginResult');
+            
+            resultDiv.innerHTML = '<p>Testing user login...</p>';
+            
+            try {
+                const response = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        email: 'test@example.com', 
+                        password: 'password123' 
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <p class="success">✅ User Login Successful!</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                        <p><strong>Is Admin:</strong> ${data.data.user.is_admin}</p>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <p class="error">❌ User Login Failed</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <p class="error">❌ Error: ${error.message}</p>
+                `;
+            }
+        }
+
+        async function checkAccountStatus() {
+            const resultDiv = document.getElementById('statusResult');
+            resultDiv.innerHTML = '<p>Checking account status...</p>';
+            
+            // This would need a backend endpoint to check status
+            // For now, we'll just show instructions
+            resultDiv.innerHTML = `
+                <p>To check account status, run this command:</p>
+                <pre>docker exec spooky-styles-postgres psql -U spooky_user -d spooky_styles_db -c "SELECT email, is_admin, failed_login_attempts, account_locked_until FROM users WHERE email = 'admin@spookystyles.com';"</pre>
+            `;
+        }
+
+        async function unlockAccount() {
+            const resultDiv = document.getElementById('unlockResult');
+            resultDiv.innerHTML = `
+                <p>To unlock the admin account, run this command:</p>
+                <pre>node fix-admin-login.js</pre>
+                <p>Or run this SQL command:</p>
+                <pre>docker exec spooky-styles-postgres psql -U spooky_user -d spooky_styles_db -c "UPDATE users SET failed_login_attempts = 0, account_locked_until = NULL WHERE email = 'admin@spookystyles.com';"</pre>
+            `;
+        }
+
+        // Auto-test on load
+        window.addEventListener('load', () => {
+            console.log('Admin Login Test Page Loaded');
+            console.log('API URL:', API_URL);
+        });
+    </script>
+</body>
+</html>

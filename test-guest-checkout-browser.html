@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guest Checkout Test - Spooky Wigs</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #1a0033 0%, #0a0a0a 100%);
+      color: #fff;
+      padding: 20px;
+      min-height: 100vh;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    h1 {
+      color: #f97316;
+      margin-bottom: 10px;
+      font-size: 2.5em;
+    }
+    
+    .subtitle {
+      color: #8b5cf6;
+      margin-bottom: 30px;
+      font-size: 1.2em;
+    }
+    
+    .test-section {
+      background: rgba(139, 92, 246, 0.1);
+      border: 2px solid #8b5cf6;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    
+    .test-section h2 {
+      color: #f97316;
+      margin-bottom: 15px;
+      font-size: 1.5em;
+    }
+    
+    .button {
+      background: linear-gradient(135deg, #8b5cf6 0%, #f97316 100%);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: bold;
+      margin: 5px;
+      transition: transform 0.2s;
+    }
+    
+    .button:hover {
+      transform: scale(1.05);
+    }
+    
+    .button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .output {
+      background: #0a0a0a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 15px;
+      margin-top: 15px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    
+    .success {
+      color: #10b981;
+    }
+    
+    .error {
+      color: #ef4444;
+    }
+    
+    .info {
+      color: #3b82f6;
+    }
+    
+    .warning {
+      color: #f59e0b;
+    }
+    
+    .cart-item {
+      background: rgba(249, 115, 22, 0.1);
+      border: 1px solid #f97316;
+      border-radius: 8px;
+      padding: 15px;
+      margin: 10px 0;
+    }
+    
+    .form-group {
+      margin-bottom: 15px;
+    }
+    
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      color: #8b5cf6;
+      font-weight: bold;
+    }
+    
+    .form-group input {
+      width: 100%;
+      padding: 10px;
+      border: 2px solid #8b5cf6;
+      border-radius: 6px;
+      background: #0a0a0a;
+      color: #fff;
+      font-size: 14px;
+    }
+    
+    .form-group input:focus {
+      outline: none;
+      border-color: #f97316;
+    }
+    
+    .status-badge {
+      display: inline-block;
+      padding: 5px 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      font-weight: bold;
+      margin-left: 10px;
+    }
+    
+    .status-pending {
+      background: #f59e0b;
+      color: #000;
+    }
+    
+    .status-completed {
+      background: #10b981;
+      color: #000;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎃 Guest Checkout Test</h1>
+    <p class="subtitle">Test the complete guest purchase flow with localStorage cart</p>
+    
+    <!-- Step 1: Load Products -->
+    <div class="test-section">
+      <h2>Step 1: Load Products</h2>
+      <button class="button" onclick="loadProducts()">Load Products</button>
+      <div id="products-output" class="output"></div>
+    </div>
+    
+    <!-- Step 2: Add to Cart -->
+    <div class="test-section">
+      <h2>Step 2: Add to Cart (localStorage)</h2>
+      <button class="button" onclick="addToCart()" id="add-cart-btn" disabled>Add Product to Cart</button>
+      <button class="button" onclick="viewCart()">View Cart</button>
+      <button class="button" onclick="clearCart()">Clear Cart</button>
+      <div id="cart-output" class="output"></div>
+    </div>
+    
+    <!-- Step 3: Guest Information -->
+    <div class="test-section">
+      <h2>Step 3: Guest Information</h2>
+      <div class="form-group">
+        <label>Email:</label>
+        <input type="email" id="guest-email" value="guest@test.com" />
+      </div>
+      <div class="form-group">
+        <label>Full Name:</label>
+        <input type="text" id="guest-name" value="Guest Tester" />
+      </div>
+      <div class="form-group">
+        <label>Phone:</label>
+        <input type="tel" id="guest-phone" value="+1234567890" />
+      </div>
+      <div class="form-group">
+        <label>Address:</label>
+        <input type="text" id="guest-address" value="123 Test Street, Test City, TS 12345" />
+      </div>
+    </div>
+    
+    <!-- Step 4: Payment Intent -->
+    <div class="test-section">
+      <h2>Step 4: Create Payment Intent</h2>
+      <button class="button" onclick="createPaymentIntent()" id="payment-btn">Create Payment Intent</button>
+      <div id="payment-output" class="output"></div>
+    </div>
+    
+    <!-- Step 5: Payment Simulation -->
+    <div class="test-section">
+      <h2>Step 5: Payment Completion</h2>
+      <p style="color: #8b5cf6;">In production, Stripe Elements would handle card input and payment processing.</p>
+      <p style="color: #f97316;">After successful payment, webhook creates the order automatically.</p>
+      <div id="order-output" class="output"></div>
+    </div>
+    
+    <!-- Step 6: Order Confirmation -->
+    <div class="test-section">
+      <h2>Step 6: Order Confirmation</h2>
+      <button class="button" onclick="viewOrderConfirmation()" id="confirm-btn" disabled>View Order Confirmation</button>
+      <div id="confirmation-output" class="output"></div>
+    </div>
+  </div>
+  
+  <script>
+    const API_URL = 'http://localhost:5000';
+    let products = [];
+    let selectedProduct = null;
+    let currentOrderId = null;
+    
+    function log(message, type = 'info') {
+      const colors = {
+        success: 'success',
+        error: 'error',
+        info: 'info',
+        warning: 'warning'
+      };
+      return `<div class="${colors[type]}">${message}</div>`;
+    }
+    
+    async function loadProducts() {
+      const output = document.getElementById('products-output');
+      output.innerHTML = log('Loading products...', 'info');
+      
+      try {
+        const response = await fetch(`${API_URL}/api/products`);
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.message || 'Failed to load products');
+        }
+        
+        products = data;
+        selectedProduct = products[0];
+        
+        output.innerHTML = log(`✅ Loaded ${products.length} products`, 'success');
+        output.innerHTML += log(`Selected: ${selectedProduct.name} - $${selectedProduct.price}`, 'info');
+        
+        document.getElementById('add-cart-btn').disabled = false;
+        
+      } catch (error) {
+        output.innerHTML = log(`❌ Error: ${error.message}`, 'error');
+      }
+    }
+    
+    function addToCart() {
+      const output = document.getElementById('cart-output');
+      
+      if (!selectedProduct) {
+        output.innerHTML = log('❌ No product selected', 'error');
+        return;
+      }
+      
+      // Get existing cart from localStorage
+      let cart = JSON.parse(localStorage.getItem('spooky-wigs-cart') || '{"items": [], "total": 0}');
+      
+      // Check if product already in cart
+      const existingItem = cart.items.find(item => item.productId === selectedProduct.id);
+      
+      if (existingItem) {
+        existingItem.quantity += 1;
+      } else {
+        cart.items.push({
+          id: `cart-${Date.now()}`,
+          productId: selectedProduct.id,
+          quantity: 1,
+          selectedColor: selectedProduct.colors?.[0] || 'Default',
+          price: selectedProduct.price,
+          product: {
+            id: selectedProduct.id,
+            name: selectedProduct.name,
+            price: selectedProduct.price,
+            imageUrl: selectedProduct.imageUrl
+          }
+        });
+      }
+      
+      // Calculate total
+      cart.total = cart.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      
+      // Save to localStorage
+      localStorage.setItem('spooky-wigs-cart', JSON.stringify(cart));
+      
+      output.innerHTML = log('✅ Product added to cart!', 'success');
+      viewCart();
+    }
+    
+    function viewCart() {
+      const output = document.getElementById('cart-output');
+      const cart = JSON.parse(localStorage.getItem('spooky-wigs-cart') || '{"items": [], "total": 0}');
+      
+      if (cart.items.length === 0) {
+        output.innerHTML = log('🛒 Cart is empty', 'warning');
+        return;
+      }
+      
+      let html = log(`🛒 Cart (${cart.items.length} items)`, 'success');
+      
+      cart.items.forEach(item => {
+        html += `
+          <div class="cart-item">
+            <strong>${item.product.name}</strong><br>
+            Color: ${item.selectedColor}<br>
+            Quantity: ${item.quantity}<br>
+            Price: $${item.price} × ${item.quantity} = $${(item.price * item.quantity).toFixed(2)}
+          </div>
+        `;
+      });
+      
+      html += log(`<strong>Total: $${cart.total.toFixed(2)}</strong>`, 'success');
+      output.innerHTML = html;
+    }
+    
+    function clearCart() {
+      localStorage.removeItem('spooky-wigs-cart');
+      document.getElementById('cart-output').innerHTML = log('✅ Cart cleared', 'success');
+    }
+    
+
+    
+    async function createPaymentIntent() {
+      const paymentOutput = document.getElementById('payment-output');
+      const orderOutput = document.getElementById('order-output');
+      paymentOutput.innerHTML = log('Creating payment intent...', 'info');
+      
+      const cart = JSON.parse(localStorage.getItem('spooky-wigs-cart') || '{"items": [], "total": 0}');
+      
+      if (cart.items.length === 0) {
+        paymentOutput.innerHTML = log('❌ Cart is empty', 'error');
+        return;
+      }
+      
+      const paymentData = {
+        amount: Math.round(cart.total * 100),
+        guestInfo: {
+          email: document.getElementById('guest-email').value,
+          name: document.getElementById('guest-name').value,
+          address: document.getElementById('guest-address').value,
+          city: 'Test City',
+          state: 'TS',
+          zipCode: '12345',
+          country: 'United States'
+        }
+      };
+      
+      try {
+        const response = await fetch(`${API_URL}/api/payments/intent`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(paymentData)
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.error?.message || 'Failed to create payment intent');
+        }
+        
+        currentOrderId = data.paymentIntentId; // Store for reference
+        
+        paymentOutput.innerHTML = log('✅ Payment intent created!', 'success');
+        paymentOutput.innerHTML += log(`Payment Intent ID: ${data.paymentIntentId}`, 'info');
+        paymentOutput.innerHTML += log(`Client Secret: ${data.clientSecret.substring(0, 30)}...`, 'info');
+        paymentOutput.innerHTML += log(`Amount: $${(paymentData.amount / 100).toFixed(2)}`, 'info');
+        
+        orderOutput.innerHTML = log('💳 Payment Flow:', 'info');
+        orderOutput.innerHTML += log('1. User enters card details in Stripe Elements', 'info');
+        orderOutput.innerHTML += log('2. Stripe processes payment', 'info');
+        orderOutput.innerHTML += log('3. Webhook receives payment success event', 'info');
+        orderOutput.innerHTML += log('4. Backend creates order in database', 'info');
+        orderOutput.innerHTML += log('5. User redirected to confirmation page', 'success');
+        orderOutput.innerHTML += log('6. Cart cleared from localStorage', 'success');
+        
+        document.getElementById('confirm-btn').disabled = false;
+        
+      } catch (error) {
+        paymentOutput.innerHTML = log(`❌ Error: ${error.message}`, 'error');
+      }
+    }
+    
+    async function viewOrderConfirmation() {
+      const output = document.getElementById('confirmation-output');
+      output.innerHTML = log('Order Confirmation Summary...', 'info');
+      
+      const cart = JSON.parse(localStorage.getItem('spooky-wigs-cart') || '{"items": [], "total": 0}');
+      
+      if (!currentOrderId) {
+        output.innerHTML = log('❌ No payment intent created yet', 'error');
+        return;
+      }
+      
+      output.innerHTML = log('✅ Guest Checkout Summary', 'success');
+      output.innerHTML += `
+        <div class="cart-item">
+          <h3>Order Details</h3>
+          <p><strong>Payment Intent:</strong> ${currentOrderId}</p>
+          <p><strong>Email:</strong> ${document.getElementById('guest-email').value}</p>
+          <p><strong>Name:</strong> ${document.getElementById('guest-name').value}</p>
+          <p><strong>Phone:</strong> ${document.getElementById('guest-phone').value}</p>
+          <p><strong>Address:</strong> ${document.getElementById('guest-address').value}</p>
+          <p><strong>Total:</strong> $${cart.total.toFixed(2)}</p>
+          <p><strong>Items:</strong> ${cart.items.length}</p>
+        </div>
+      `;
+      
+      output.innerHTML += log('📝 What happens after payment:', 'info');
+      output.innerHTML += log('1. Stripe webhook receives payment.succeeded event', 'info');
+      output.innerHTML += log('2. Backend creates order with guest info from metadata', 'info');
+      output.innerHTML += log('3. Order ID returned to frontend', 'info');
+      output.innerHTML += log('4. User sees confirmation page with order details', 'success');
+      output.innerHTML += log('5. Cart cleared from localStorage', 'success');
+      output.innerHTML += log('6. Confirmation email sent to guest', 'info');
+      
+      output.innerHTML += log('\n💡 To test with real payment:', 'warning');
+      output.innerHTML += log('Use Stripe test card: 4242 4242 4242 4242', 'warning');
+      output.innerHTML += log('Any future expiry date and CVC', 'warning');
+    }
+    
+    // Auto-load cart on page load
+    window.addEventListener('load', () => {
+      viewCart();
+    });
+  </script>
+</body>
+</html>

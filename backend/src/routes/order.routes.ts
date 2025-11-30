@@ -6,7 +6,33 @@ import { csrfProtection } from '../middleware/csrf.middleware.js';
 
 const router = Router();
 
-// All order routes require authentication
+// Public endpoint: Get order by payment intent ID (for guest checkout confirmation)
+router.get('/payment-intent/:paymentIntentId', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { paymentIntentId } = req.params;
+    
+    const order = await orderService.getOrderByPaymentIntentId(paymentIntentId);
+    
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          message: 'Order not found',
+          statusCode: 404,
+        },
+      });
+    }
+    
+    res.json({
+      success: true,
+      data: order,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// All other order routes require authentication
 router.use(authenticateToken);
 
 // CSRF protection for state-changing operations (PUT)
