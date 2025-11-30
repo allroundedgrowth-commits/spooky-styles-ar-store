@@ -1,6 +1,6 @@
 /**
  * Simple 2D AR Try-On Engine
- * Uses MediaPipe Face Detection for lightweight face tracking
+ * Uses MediaPipe Face Mesh for precise face tracking with 468 landmarks
  * Overlays 2D images instead of 3D models
  * 
  * Extended with Smart Hair Flattening support for realistic wig try-on
@@ -11,6 +11,7 @@
 import { HairSegmentationModule, SegmentationResult } from './HairSegmentationModule';
 import { HairVolumeDetector, VolumeMetrics, VolumeCategory } from './HairVolumeDetector';
 import { HairFlatteningEngine, AdjustmentMode, FlattenedResult } from './HairFlatteningEngine';
+import { MediaPipeFaceMeshTracker, FaceLandmarks } from './MediaPipeFaceMesh';
 
 // Re-export types for convenience
 export type { AdjustmentMode, VolumeCategory };
@@ -28,6 +29,8 @@ export interface ARConfig {
   wigColor?: string;
   scale?: number;
   offsetY?: number;
+  offsetX?: number;
+  opacity?: number;
   enableHairFlattening?: boolean; // Optional hair flattening feature
 }
 
@@ -78,6 +81,15 @@ export class Simple2DAREngine {
   private config: ARConfig;
   private useStaticImage: boolean = false;
 
+  // MediaPipe Face Mesh tracker
+  private faceMeshTracker: MediaPipeFaceMeshTracker | null = null;
+  private currentLandmarks: FaceLandmarks | null = null;
+  private useMediaPipe: boolean = true; // Toggle for MediaPipe vs fallback
+
+  // Smooth interpolation for natural tracking
+  private smoothedLandmarks: FaceLandmarks | null = null;
+  private readonly SMOOTHING_FACTOR = 0.3; // Lower = smoother but more lag, Higher = more responsive but jittery
+
   // Hair flattening modules (optional)
   private hairSegmentation: HairSegmentationModule | null = null;
   private hairVolumeDetector: HairVolumeDetector | null = null;
@@ -95,8 +107,10 @@ export class Simple2DAREngine {
     this.ctx = canvasElement.getContext('2d')!;
     this.config = {
       wigImageUrl: '',
-      scale: 1.5,
-      offsetY: -0.3,
+      scale: 1.5,        // Larger scale for better visibility
+      offsetY: -0.5,     // Adjusted for better head coverage
+      offsetX: 0,
+      opacity: 0.85,     // More opaque for better visibility
       enableHairFlattening: false,
     };
 
@@ -120,23 +134,24 @@ export class Simple2DAREngine {
 
   async initialize(): Promise<void> {
     try {
-      // Request camera access
+      // Request camera access with portrait orientation for better face framing
       this.stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
+          width: { ideal: 720 },  // Portrait width
+          height: { ideal: 1280 }, // Portrait height
           facingMode: 'user',
+          aspectRatio: { ideal: 9/16 }, // Portrait aspect ratio
         },
       });
 
       this.videoElement.srcObject = this.stream;
       await this.videoElement.play();
 
-      // Set canvas size to match video
+      // Set canvas size to match video with portrait orientation
       this.canvasElement.width = this.videoElement.videoWidth;
       this.canvasElement.height = this.videoElement.videoHeight;
 
-      // Initialize face detection (using a simple approach)
+      // Initialize MediaPipe Face Mesh for precise tracking
       await this.initializeFaceDetection();
 
       // Initialize hair flattening if enabled
@@ -145,7 +160,9 @@ export class Simple2DAREngine {
       }
 
       console.log('2D AR Engine initialized', {
+        faceTracking: this.useMediaPipe ? 'MediaPipe Face Mesh' : 'Fallback',
         hairFlattening: this.config.enableHairFlattening,
+        videoSize: `${this.canvasElement.width}x${this.canvasElement.height}`,
       });
     } catch (error) {
       console.error('Failed to initialize camera:', error);
@@ -199,10 +216,28 @@ export class Simple2DAREngine {
   }
 
   private async initializeFaceDetection(): Promise<void> {
-    // For now, we'll use a simple face detection approach
-    // In production, you'd use MediaPipe or face-api.js
-    console.log('Face detection ready (using simple detection)');
-    // Note: faceDetector would be initialized here in production
+    try {
+      // Initialize MediaPipe Face Mesh for precise landmark tracking
+      this.faceMeshTracker = new MediaPipeFaceMeshTracker();
+      await this.faceMeshTracker.initialize(this.videoElement);
+      
+      // Set up landmarks callback with smooth interpolation
+      this.faceMeshTracker.onLandmarks((landmarks: FaceLandmarks) => {
+        this.currentLandmarks = landmarks;
+        // Apply smooth interpolation for natural tracking
+        this.smoothedLandmarks = this.interpolateLandmarks(landmarks);
+      });
+      
+      // Start tracking
+      await this.faceMeshTracker.start();
+      
+      this.useMediaPipe = true;
+      console.log('✅ MediaPipe Face Mesh initialized for 2D AR');
+    } catch (error) {
+      console.warn('⚠️ MediaPipe initialization failed, using fallback detection:', error);
+      this.useMediaPipe = false;
+      this.faceMeshTracker = null;
+    }
   }
 
   async loadWig(config: ARConfig): Promise<void> {
@@ -411,44 +446,377 @@ export class Simple2DAREngine {
   }
 
   private detectFace(): FaceDetection | null {
-    // Simple face detection using video dimensions
-    // In production, use MediaPipe Face Detection or face-api.js
+    // Use smoothed MediaPipe landmarks if available for natural tracking
+    if (this.useMediaPipe && this.smoothedLandmarks) {
+      return this.detectFaceFromLandmarks(this.smoothedLandmarks);
+    }
+
+    // Fallback to basic detection for static images or if MediaPipe fails
+    return this.detectFaceBasic();
+  }
+
+  /**
+   * Detect face using MediaPipe landmarks
+   * Provides precise positioning based on 468 facial landmarks
+   */
+  private detectFaceFromLandmarks(landmarks: FaceLandmarks): FaceDetection {
     const width = this.canvasElement.width;
     const height = this.canvasElement.height;
 
-    // Assume face is centered (this is a placeholder)
+    // Convert normalized coordinates to pixel coordinates
+    const foreheadTop = {
+      x: landmarks.foreheadTop.x * width,
+      y: landmarks.foreheadTop.y * height,
+    };
+    
+    const leftTemple = {
+      x: landmarks.leftTemple.x * width,
+      y: landmarks.leftTemple.y * height,
+    };
+    
+    const rightTemple = {
+      x: landmarks.rightTemple.x * width,
+      y: landmarks.rightTemple.y * height,
+    };
+
+    // Calculate face bounding box from landmarks
+    // Use temples for width and extend upward for wig placement
+    const faceWidth = Math.abs(rightTemple.x - leftTemple.x);
+    const faceHeight = landmarks.headHeight * height;
+    
+    // Center X between temples
+    const centerX = (leftTemple.x + rightTemple.x) / 2;
+    
+    // Position wig to cover hair area (above forehead)
+    const wigHeight = faceHeight * 0.6; // Wig covers upper 60% of head
+    const wigY = foreheadTop.y - wigHeight * 0.5; // Start above forehead
+    
     return {
-      x: width * 0.3,
-      y: height * 0.2,
-      width: width * 0.4,
-      height: height * 0.5,
-      confidence: 0.9,
+      x: centerX - faceWidth / 2,
+      y: wigY,
+      width: faceWidth,
+      height: wigHeight,
+      confidence: landmarks.confidence,
+    };
+  }
+
+  /**
+   * Basic face detection fallback
+   * Uses skin tone detection or assumes centered face
+   */
+  private detectFaceBasic(): FaceDetection | null {
+    const width = this.canvasElement.width;
+    const height = this.canvasElement.height;
+
+    try {
+      // Get current frame data
+      const imageData = this.ctx.getImageData(0, 0, width, height);
+      const data = imageData.data;
+
+      // Simple skin tone detection to find face region
+      let minX = width, maxX = 0, minY = height, maxY = 0;
+      let skinPixelCount = 0;
+
+      // Sample every 10th pixel for performance
+      for (let y = 0; y < height; y += 10) {
+        for (let x = 0; x < width; x += 10) {
+          const i = (y * width + x) * 4;
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+
+          // Simple skin tone detection (works for most skin tones)
+          if (this.isSkinTone(r, g, b)) {
+            skinPixelCount++;
+            if (x < minX) minX = x;
+            if (x > maxX) maxX = x;
+            if (y < minY) minY = y;
+            if (y > maxY) maxY = y;
+          }
+        }
+      }
+
+      // If we found enough skin pixels, use detected region
+      if (skinPixelCount > 50) {
+        // Add padding and center the face region
+        const padding = 40;
+        const faceX = Math.max(0, minX - padding);
+        const faceY = Math.max(0, minY - padding);
+        const faceWidth = Math.min(width - faceX, maxX - minX + padding * 2);
+        const faceHeight = Math.min(height - faceY, maxY - minY + padding * 2);
+
+        return {
+          x: faceX,
+          y: faceY,
+          width: faceWidth,
+          height: faceHeight,
+          confidence: 0.8,
+        };
+      }
+    } catch (error) {
+      console.warn('Face detection error:', error);
+    }
+
+    // Fallback: assume face is in upper-center portion (portrait mode)
+    // This works well for selfie-style photos
+    // Position for natural wig placement - covers top of head, face remains visible
+    return {
+      x: width * 0.2,       // 20% from left (centered)
+      y: height * 0.05,     // 5% from top (top of head area)
+      width: width * 0.6,   // 60% of width (head width)
+      height: height * 0.35, // 35% of height (head area only, not full face)
+      confidence: 0.7,
+    };
+  }
+
+  /**
+   * Simple skin tone detection
+   * Works for a wide range of skin tones
+   */
+  private isSkinTone(r: number, g: number, b: number): boolean {
+    // RGB skin tone detection algorithm
+    // Works for most skin tones from light to dark
+    const rgbSum = r + g + b;
+    
+    // Basic checks
+    if (rgbSum === 0) return false;
+    if (r < 60 || g < 40 || b < 20) return false;
+    
+    // Skin tone characteristics
+    const rg = r - g;
+    const rb = r - b;
+    const gb = g - b;
+    
+    // Skin typically has: R > G > B
+    if (r > g && g > b) {
+      // Additional checks for skin tone range
+      if (rg > 15 && rb > 15 && Math.abs(gb) < 15) {
+        return true;
+      }
+    }
+    
+    return false;
+  }
+
+  /**
+   * Interpolate landmarks for smooth, natural tracking
+   * Uses exponential moving average to reduce jitter while maintaining responsiveness
+   * 
+   * @param newLandmarks - Latest landmarks from MediaPipe
+   * @returns Smoothed landmarks
+   */
+  private interpolateLandmarks(newLandmarks: FaceLandmarks): FaceLandmarks {
+    // First frame - no previous data to interpolate
+    if (!this.smoothedLandmarks) {
+      return newLandmarks;
+    }
+
+    // Apply exponential moving average (EMA) to each landmark point
+    // Formula: smoothed = smoothed * (1 - alpha) + new * alpha
+    // where alpha = SMOOTHING_FACTOR
+    const alpha = this.SMOOTHING_FACTOR;
+    const beta = 1 - alpha;
+
+    return {
+      foreheadTop: {
+        x: this.smoothedLandmarks.foreheadTop.x * beta + newLandmarks.foreheadTop.x * alpha,
+        y: this.smoothedLandmarks.foreheadTop.y * beta + newLandmarks.foreheadTop.y * alpha,
+        z: this.smoothedLandmarks.foreheadTop.z * beta + newLandmarks.foreheadTop.z * alpha,
+      },
+      leftTemple: {
+        x: this.smoothedLandmarks.leftTemple.x * beta + newLandmarks.leftTemple.x * alpha,
+        y: this.smoothedLandmarks.leftTemple.y * beta + newLandmarks.leftTemple.y * alpha,
+        z: this.smoothedLandmarks.leftTemple.z * beta + newLandmarks.leftTemple.z * alpha,
+      },
+      rightTemple: {
+        x: this.smoothedLandmarks.rightTemple.x * beta + newLandmarks.rightTemple.x * alpha,
+        y: this.smoothedLandmarks.rightTemple.y * beta + newLandmarks.rightTemple.y * alpha,
+        z: this.smoothedLandmarks.rightTemple.z * beta + newLandmarks.rightTemple.z * alpha,
+      },
+      noseTip: {
+        x: this.smoothedLandmarks.noseTip.x * beta + newLandmarks.noseTip.x * alpha,
+        y: this.smoothedLandmarks.noseTip.y * beta + newLandmarks.noseTip.y * alpha,
+        z: this.smoothedLandmarks.noseTip.z * beta + newLandmarks.noseTip.z * alpha,
+      },
+      chin: {
+        x: this.smoothedLandmarks.chin.x * beta + newLandmarks.chin.x * alpha,
+        y: this.smoothedLandmarks.chin.y * beta + newLandmarks.chin.y * alpha,
+        z: this.smoothedLandmarks.chin.z * beta + newLandmarks.chin.z * alpha,
+      },
+      leftEye: {
+        x: this.smoothedLandmarks.leftEye.x * beta + newLandmarks.leftEye.x * alpha,
+        y: this.smoothedLandmarks.leftEye.y * beta + newLandmarks.leftEye.y * alpha,
+        z: this.smoothedLandmarks.leftEye.z * beta + newLandmarks.leftEye.z * alpha,
+      },
+      rightEye: {
+        x: this.smoothedLandmarks.rightEye.x * beta + newLandmarks.rightEye.x * alpha,
+        y: this.smoothedLandmarks.rightEye.y * beta + newLandmarks.rightEye.y * alpha,
+        z: this.smoothedLandmarks.rightEye.z * beta + newLandmarks.rightEye.z * alpha,
+      },
+      headHeight: this.smoothedLandmarks.headHeight * beta + newLandmarks.headHeight * alpha,
+      confidence: newLandmarks.confidence, // Don't smooth confidence
     };
   }
 
   private drawWig(face: FaceDetection): void {
     if (!this.wigImage) return;
 
-    const { scale = 1.5, offsetY = -0.3, wigColor } = this.config;
+    const { scale = 1.5, offsetY = -0.3, offsetX = 0, opacity = 0.85, wigColor } = this.config;
 
-    // Calculate wig position and size
-    const wigWidth = face.width * scale;
+    // Use smoothed landmark-based positioning for natural tracking
+    if (this.useMediaPipe && this.smoothedLandmarks) {
+      this.drawWigWithLandmarks(this.smoothedLandmarks, scale, offsetX, offsetY, opacity, wigColor);
+      return;
+    }
+
+    // Fallback to bounding box positioning
+    this.drawWigWithBoundingBox(face, scale, offsetX, offsetY, opacity, wigColor);
+  }
+
+  /**
+   * Draw wig using precise facial landmarks
+   * Provides accurate positioning based on forehead, temples, and head shape
+   */
+  private drawWigWithLandmarks(
+    landmarks: FaceLandmarks,
+    scale: number,
+    offsetX: number,
+    offsetY: number,
+    opacity: number,
+    wigColor?: string
+  ): void {
+    if (!this.wigImage) return;
+
+    const width = this.canvasElement.width;
+    const height = this.canvasElement.height;
+
+    // Convert normalized coordinates to pixel coordinates
+    const foreheadTop = {
+      x: landmarks.foreheadTop.x * width,
+      y: landmarks.foreheadTop.y * height,
+    };
+    
+    const leftTemple = {
+      x: landmarks.leftTemple.x * width,
+      y: landmarks.leftTemple.y * height,
+    };
+    
+    const rightTemple = {
+      x: landmarks.rightTemple.x * width,
+      y: landmarks.rightTemple.y * height,
+    };
+
+    // Calculate wig dimensions based on head landmarks
+    const headWidth = Math.abs(rightTemple.x - leftTemple.x);
+    const wigWidth = headWidth * scale;
     const wigHeight = (this.wigImage.height / this.wigImage.width) * wigWidth;
-    const wigX = face.x + (face.width - wigWidth) / 2;
-    const wigY = face.y + face.height * offsetY;
+    
+    // Center X between temples
+    const centerX = (leftTemple.x + rightTemple.x) / 2;
+    
+    // Position wig starting from forehead top, extending upward
+    // offsetY is relative to forehead position (negative = higher up)
+    const wigX = centerX - wigWidth / 2 + (headWidth * offsetX);
+    const wigY = foreheadTop.y - (wigHeight * 0.5) + (wigHeight * offsetY);
 
+    // Save context state
+    this.ctx.save();
+    
+    // Set transparency
+    this.ctx.globalAlpha = opacity;
+    
     // Apply color tint if specified
     if (wigColor) {
-      this.ctx.save();
       this.ctx.globalCompositeOperation = 'multiply';
       this.ctx.fillStyle = wigColor;
       this.ctx.fillRect(wigX, wigY, wigWidth, wigHeight);
       this.ctx.globalCompositeOperation = 'destination-in';
       this.ctx.drawImage(this.wigImage, wigX, wigY, wigWidth, wigHeight);
-      this.ctx.restore();
     } else {
+      // Use 'source-over' for normal blending
+      this.ctx.globalCompositeOperation = 'source-over';
       this.ctx.drawImage(this.wigImage, wigX, wigY, wigWidth, wigHeight);
     }
+    
+    // Restore context state
+    this.ctx.restore();
+  }
+
+  /**
+   * Draw wig using bounding box (fallback method)
+   * Used when MediaPipe landmarks are not available
+   */
+  private drawWigWithBoundingBox(
+    face: FaceDetection,
+    scale: number,
+    offsetX: number,
+    offsetY: number,
+    opacity: number,
+    wigColor?: string
+  ): void {
+    if (!this.wigImage) return;
+
+    // Auto-calculate optimal scale based on face size
+    const faceWidthRatio = face.width / this.canvasElement.width;
+    const autoScaleAdjustment = this.calculateAutoScale(faceWidthRatio);
+    const finalScale = scale * autoScaleAdjustment;
+
+    // Calculate wig position and size with auto-scaling
+    const wigWidth = face.width * finalScale;
+    const wigHeight = (this.wigImage.height / this.wigImage.width) * wigWidth;
+    
+    // Apply both horizontal and vertical offsets
+    const wigX = face.x + (face.width - wigWidth) / 2 + (face.width * offsetX);
+    const wigY = face.y + face.height * offsetY;
+
+    // Save context state
+    this.ctx.save();
+    
+    // Set transparency - allows face to show through
+    this.ctx.globalAlpha = opacity;
+    
+    // Apply color tint if specified
+    if (wigColor) {
+      this.ctx.globalCompositeOperation = 'multiply';
+      this.ctx.fillStyle = wigColor;
+      this.ctx.fillRect(wigX, wigY, wigWidth, wigHeight);
+      this.ctx.globalCompositeOperation = 'destination-in';
+      this.ctx.drawImage(this.wigImage, wigX, wigY, wigWidth, wigHeight);
+    } else {
+      // Use 'source-over' for normal blending
+      this.ctx.globalCompositeOperation = 'source-over';
+      this.ctx.drawImage(this.wigImage, wigX, wigY, wigWidth, wigHeight);
+    }
+    
+    // Restore context state
+    this.ctx.restore();
+  }
+
+  /**
+   * Calculate automatic scale adjustment based on face/head size
+   * Ensures wig looks proportional regardless of face size or distance from camera
+   * Automatically adjusts wig size to match head dimensions
+   */
+  private calculateAutoScale(faceWidthRatio: number): number {
+    // faceWidthRatio: 0.0 to 1.0 (percentage of canvas width)
+    
+    // Optimal face width ratio is around 0.5-0.7 (50-70% of canvas)
+    const optimalRatio = 0.6;
+    
+    // If face is smaller than optimal, increase wig size more aggressively
+    // If face is larger than optimal, decrease wig size proportionally
+    if (faceWidthRatio < optimalRatio) {
+      // Face is small (far from camera) - increase wig size significantly
+      const adjustment = 1 + (optimalRatio - faceWidthRatio) * 0.8;
+      return Math.min(adjustment, 1.5); // Cap at 1.5x for larger heads
+    } else if (faceWidthRatio > optimalRatio) {
+      // Face is large (close to camera) - decrease wig size proportionally
+      const adjustment = 1 - (faceWidthRatio - optimalRatio) * 0.4;
+      return Math.max(adjustment, 0.7); // Floor at 0.7x for smaller heads
+    }
+    
+    // Face is optimal size - no adjustment needed
+    return 1.0;
   }
 
   updateConfig(config: Partial<ARConfig>): void {
@@ -504,6 +872,24 @@ export class Simple2DAREngine {
    */
   isHairFlatteningEnabled(): boolean {
     return this.config.enableHairFlattening === true && this.hairProcessingState.isInitialized;
+  }
+
+  /**
+   * Check if MediaPipe Face Mesh is being used
+   * 
+   * @returns true if MediaPipe is active
+   */
+  isUsingMediaPipe(): boolean {
+    return this.useMediaPipe && this.faceMeshTracker !== null;
+  }
+
+  /**
+   * Get current face landmarks from MediaPipe
+   * 
+   * @returns Current landmarks or null if not available
+   */
+  getCurrentLandmarks(): FaceLandmarks | null {
+    return this.currentLandmarks;
   }
 
   takeScreenshot(): string {
@@ -599,6 +985,14 @@ export class Simple2DAREngine {
 
   dispose(): void {
     this.stopRendering();
+
+    // Dispose MediaPipe Face Mesh
+    if (this.faceMeshTracker) {
+      this.faceMeshTracker.dispose();
+      this.faceMeshTracker = null;
+    }
+    this.currentLandmarks = null;
+    this.smoothedLandmarks = null;
 
     if (this.stream) {
       this.stream.getTracks().forEach(track => track.stop());

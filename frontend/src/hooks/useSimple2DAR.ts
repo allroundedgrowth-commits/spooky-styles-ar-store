@@ -11,6 +11,7 @@ export const useSimple2DAR = () => {
   const [error, setError] = useState<string | null>(null);
   const [cameraPermission, setCameraPermission] = useState<'granted' | 'denied' | 'prompt'>('prompt');
   const [hairProcessingState, setHairProcessingState] = useState<HairProcessingState | null>(null);
+  const [isUsingMediaPipe, setIsUsingMediaPipe] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -35,6 +36,7 @@ export const useSimple2DAR = () => {
       engineRef.current = engine;
       setIsInitialized(true);
       setCameraPermission('granted');
+      setIsUsingMediaPipe(engine.isUsingMediaPipe());
     } catch (err: any) {
       console.error('Failed to initialize AR:', err);
       setError(err.message || 'Failed to access camera');
@@ -149,6 +151,7 @@ export const useSimple2DAR = () => {
     error,
     cameraPermission,
     hairProcessingState,
+    isUsingMediaPipe,
     initialize,
     loadWig,
     loadUserImage,

@@ -258,6 +258,7 @@
   - **Validates: Requirements 10.4**
 
 - [ ] 14. Create performance management system
+
   - Build PerformanceManager class
   - Implement FPS monitoring for overall and segmentation rates
   - Add monitorPerformance method that tracks metrics

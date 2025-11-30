@@ -41,6 +41,7 @@ function App() {
             <Route path="order-confirmation" element={<OrderConfirmation />} />
             <Route path="account" element={<Account />} />
             <Route path="ar-tryon/:id" element={<ARTryOn />} />
+            <Route path="ar-tryon" element={<ARTryOn />} />
             <Route
               path="admin"
               element={

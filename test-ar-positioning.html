@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AR Positioning Test Tool</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1a0033 0%, #0a0a0a 100%);
+      color: #fff;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      text-align: center;
+      color: #8b5cf6;
+      margin-bottom: 30px;
+      font-size: 2rem;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 400px;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .video-container {
+      position: relative;
+      background: #000;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(139, 92, 246, 0.3);
+    }
+
+    #arCanvas {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .controls {
+      background: rgba(26, 0, 51, 0.8);
+      backdrop-filter: blur(10px);
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    }
+
+    .control-group {
+      margin-bottom: 24px;
+    }
+
+    .control-group:last-child {
+      margin-bottom: 0;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #f97316;
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .slider-container {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    input[type="range"] {
+      flex: 1;
+      height: 6px;
+      border-radius: 3px;
+      background: linear-gradient(to right, #8b5cf6, #f97316);
+      outline: none;
+      -webkit-appearance: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #fff;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #fff;
+      cursor: pointer;
+      border: none;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    .value-display {
+      min-width: 60px;
+      text-align: right;
+      font-weight: 700;
+      color: #10b981;
+      font-size: 1rem;
+    }
+
+    .button-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    button {
+      padding: 12px 20px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #8b5cf6, #f97316);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 16px rgba(139, 92, 246, 0.5);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .info-box {
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 24px;
+    }
+
+    .info-box h3 {
+      color: #10b981;
+      margin-bottom: 8px;
+      font-size: 0.9rem;
+    }
+
+    .info-box pre {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 12px;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.6;
+    }
+
+    .status {
+      text-align: center;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-weight: 600;
+    }
+
+    .status.loading {
+      background: rgba(249, 115, 22, 0.2);
+      color: #f97316;
+    }
+
+    .status.ready {
+      background: rgba(16, 185, 129, 0.2);
+      color: #10b981;
+    }
+
+    .status.error {
+      background: rgba(239, 68, 68, 0.2);
+      color: #ef4444;
+    }
+
+    @media (max-width: 1024px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎭 AR Positioning Test Tool</h1>
+    
+    <div id="status" class="status loading">
+      Initializing camera and AR engine...
+    </div>
+
+    <div class="layout">
+      <div class="video-container">
+        <video id="video" style="display: none;" autoplay playsinline></video>
+        <canvas id="arCanvas"></canvas>
+      </div>
+
+      <div class="controls">
+        <h2 style="margin-bottom: 20px; color: #8b5cf6;">Adjustment Controls</h2>
+
+        <div class="control-group">
+          <label>Smoothing Factor</label>
+          <div class="slider-container">
+            <input type="range" id="smoothing" min="0.1" max="0.7" step="0.05" value="0.3">
+            <span class="value-display" id="smoothingValue">0.30</span>
+          </div>
+          <small style="color: #999; display: block; margin-top: 4px;">
+            Lower = smoother, Higher = more responsive
+          </small>
+        </div>
+
+        <div class="control-group">
+          <label>Scale (Size)</label>
+          <div class="slider-container">
+            <input type="range" id="scale" min="0.8" max="1.8" step="0.1" value="1.2">
+            <span class="value-display" id="scaleValue">1.20</span>
+          </div>
+          <small style="color: #999; display: block; margin-top: 4px;">
+            Wig size multiplier
+          </small>
+        </div>
+
+        <div class="control-group">
+          <label>Vertical Offset (Y)</label>
+          <div class="slider-container">
+            <input type="range" id="offsetY" min="-1.2" max="-0.2" step="0.05" value="-0.7">
+            <span class="value-display" id="offsetYValue">-0.70</span>
+          </div>
+          <small style="color: #999; display: block; margin-top: 4px;">
+            Negative = higher up
+          </small>
+        </div>
+
+        <div class="control-group">
+          <label>Horizontal Offset (X)</label>
+          <div class="slider-container">
+            <input type="range" id="offsetX" min="-0.3" max="0.3" step="0.05" value="0">
+            <span class="value-display" id="offsetXValue">0.00</span>
+          </div>
+          <small style="color: #999; display: block; margin-top: 4px;">
+            Positive = right, Negative = left
+          </small>
+        </div>
+
+        <div class="control-group">
+          <label>Opacity</label>
+          <div class="slider-container">
+            <input type="range" id="opacity" min="0.3" max="1.0" step="0.05" value="0.7">
+            <span class="value-display" id="opacityValue">0.70</span>
+          </div>
+          <small style="color: #999; display: block; margin-top: 4px;">
+            Transparency level
+          </small>
+        </div>
+
+        <div class="button-group">
+          <button class="btn-primary" onclick="resetDefaults()">Reset Defaults</button>
+          <button class="btn-secondary" onclick="copyConfig()">Copy Config</button>
+        </div>
+
+        <div class="info-box">
+          <h3>📋 Current Configuration</h3>
+          <pre id="configOutput">Loading...</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Note: This is a simplified test tool
+    // For full implementation, integrate with your actual Simple2DAREngine
+
+    let currentConfig = {
+      smoothing: 0.3,
+      scale: 1.2,
+      offsetY: -0.7,
+      offsetX: 0,
+      opacity: 0.7
+    };
+
+    function updateValue(id, value) {
+      document.getElementById(id + 'Value').textContent = parseFloat(value).toFixed(2);
+      currentConfig[id === 'smoothing' ? 'smoothing' : id] = parseFloat(value);
+      updateConfigDisplay();
+      
+      // Here you would update the actual AR engine
+      // engine.updateConfig({ [id]: parseFloat(value) });
+    }
+
+    function updateConfigDisplay() {
+      const config = `SMOOTHING_FACTOR = ${currentConfig.smoothing.toFixed(2)}
+
+config = {
+  scale: ${currentConfig.scale.toFixed(2)},
+  offsetY: ${currentConfig.offsetY.toFixed(2)},
+  offsetX: ${currentConfig.offsetX.toFixed(2)},
+  opacity: ${currentConfig.opacity.toFixed(2)}
+}`;
+      document.getElementById('configOutput').textContent = config;
+    }
+
+    function resetDefaults() {
+      document.getElementById('smoothing').value = 0.3;
+      document.getElementById('scale').value = 1.2;
+      document.getElementById('offsetY').value = -0.7;
+      document.getElementById('offsetX').value = 0;
+      document.getElementById('opacity').value = 0.7;
+      
+      updateValue('smoothing', 0.3);
+      updateValue('scale', 1.2);
+      updateValue('offsetY', -0.7);
+      updateValue('offsetX', 0);
+      updateValue('opacity', 0.7);
+    }
+
+    function copyConfig() {
+      const config = document.getElementById('configOutput').textContent;
+      navigator.clipboard.writeText(config).then(() => {
+        alert('Configuration copied to clipboard!');
+      });
+    }
+
+    // Set up event listeners
+    document.getElementById('smoothing').addEventListener('input', (e) => updateValue('smoothing', e.target.value));
+    document.getElementById('scale').addEventListener('input', (e) => updateValue('scale', e.target.value));
+    document.getElementById('offsetY').addEventListener('input', (e) => updateValue('offsetY', e.target.value));
+    document.getElementById('offsetX').addEventListener('input', (e) => updateValue('offsetX', e.target.value));
+    document.getElementById('opacity').addEventListener('input', (e) => updateValue('opacity', e.target.value));
+
+    // Initialize display
+    updateConfigDisplay();
+
+    // Simulate initialization
+    setTimeout(() => {
+      document.getElementById('status').className = 'status ready';
+      document.getElementById('status').textContent = '✅ AR Engine Ready - Adjust controls to test positioning';
+    }, 1000);
+
+    console.log(`
+🎭 AR Positioning Test Tool
+
+This is a simplified testing interface. To use with your actual AR engine:
+
+1. Import Simple2DAREngine
+2. Initialize with video and canvas elements
+3. Connect slider changes to engine.updateConfig()
+4. Test with real camera feed
+
+Example integration:
+  const engine = new Simple2DAREngine(video, canvas);
+  await engine.initialize();
+  
+  // On slider change:
+  engine.updateConfig({ scale: newValue });
+    `);
+  </script>
+</body>
+</html>
