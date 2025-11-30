@@ -12,7 +12,7 @@ export const Simple2DARTryOn: React.FC = () => {
   const [product, setProduct] = useState<Product | null>(null);
   const [selectedColor, setSelectedColor] = useState<string>('');
   const [scale, setScale] = useState(1.5);
-  const [offsetY, setOffsetY] = useState(-0.5);
+  const [offsetY, setOffsetY] = useState(0.3);
   const [offsetX, setOffsetX] = useState(0);
   const [opacity, setOpacity] = useState(0.85);
   const [useUploadedImage, setUseUploadedImage] = useState(false);
@@ -48,16 +48,24 @@ export const Simple2DARTryOn: React.FC = () => {
           name: 'Demo Wig (Testing Mode)',
           description: 'Testing AR without a specific product',
           price: 0,
-          image_url: 'https://via.placeholder.com/400x600/8b5cf6/ffffff?text=Demo+Wig',
-          thumbnail_url: 'https://via.placeholder.com/400x600/8b5cf6/ffffff?text=Demo+Wig',
-          ar_image_url: 'https://via.placeholder.com/400x600/8b5cf6/ffffff?text=Demo+Wig',
-          ar_model_url: null,
           category: 'costume',
+          theme: 'party',
+          model_url: 'https://via.placeholder.com/400x600/8b5cf6/ffffff?text=Demo+Wig',
+          thumbnail_url: 'https://via.placeholder.com/400x600/8b5cf6/ffffff?text=Demo+Wig',
+          image_url: 'https://via.placeholder.com/400x600/8b5cf6/ffffff?text=Demo+Wig',
+          ar_image_url: 'https://via.placeholder.com/400x600/8b5cf6/ffffff?text=Demo+Wig',
           stock_quantity: 999,
-          colors: [{ color_name: 'Purple', color_hex: '#8b5cf6' }],
+          is_accessory: false,
+          colors: [{ 
+            id: 'demo-color',
+            product_id: 'demo',
+            color_name: 'Purple', 
+            color_hex: '#8b5cf6',
+            created_at: new Date().toISOString()
+          }],
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-        } as Product);
+        });
         setSelectedColor('#8b5cf6');
         return;
       }

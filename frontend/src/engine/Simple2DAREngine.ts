@@ -108,7 +108,7 @@ export class Simple2DAREngine {
     this.config = {
       wigImageUrl: '',
       scale: 1.5,        // Larger scale for better visibility
-      offsetY: -0.5,     // Adjusted for better head coverage
+      offsetY: 0.3,      // Positive value brings wig down to cover hair area properly
       offsetX: 0,
       opacity: 0.85,     // More opaque for better visibility
       enableHairFlattening: false,
@@ -623,6 +623,16 @@ export class Simple2DAREngine {
         y: this.smoothedLandmarks.foreheadTop.y * beta + newLandmarks.foreheadTop.y * alpha,
         z: this.smoothedLandmarks.foreheadTop.z * beta + newLandmarks.foreheadTop.z * alpha,
       },
+      foreheadLeft: {
+        x: this.smoothedLandmarks.foreheadLeft.x * beta + newLandmarks.foreheadLeft.x * alpha,
+        y: this.smoothedLandmarks.foreheadLeft.y * beta + newLandmarks.foreheadLeft.y * alpha,
+        z: this.smoothedLandmarks.foreheadLeft.z * beta + newLandmarks.foreheadLeft.z * alpha,
+      },
+      foreheadRight: {
+        x: this.smoothedLandmarks.foreheadRight.x * beta + newLandmarks.foreheadRight.x * alpha,
+        y: this.smoothedLandmarks.foreheadRight.y * beta + newLandmarks.foreheadRight.y * alpha,
+        z: this.smoothedLandmarks.foreheadRight.z * beta + newLandmarks.foreheadRight.z * alpha,
+      },
       leftTemple: {
         x: this.smoothedLandmarks.leftTemple.x * beta + newLandmarks.leftTemple.x * alpha,
         y: this.smoothedLandmarks.leftTemple.y * beta + newLandmarks.leftTemple.y * alpha,
@@ -633,27 +643,17 @@ export class Simple2DAREngine {
         y: this.smoothedLandmarks.rightTemple.y * beta + newLandmarks.rightTemple.y * alpha,
         z: this.smoothedLandmarks.rightTemple.z * beta + newLandmarks.rightTemple.z * alpha,
       },
-      noseTip: {
-        x: this.smoothedLandmarks.noseTip.x * beta + newLandmarks.noseTip.x * alpha,
-        y: this.smoothedLandmarks.noseTip.y * beta + newLandmarks.noseTip.y * alpha,
-        z: this.smoothedLandmarks.noseTip.z * beta + newLandmarks.noseTip.z * alpha,
+      hairlineCenter: {
+        x: this.smoothedLandmarks.hairlineCenter.x * beta + newLandmarks.hairlineCenter.x * alpha,
+        y: this.smoothedLandmarks.hairlineCenter.y * beta + newLandmarks.hairlineCenter.y * alpha,
+        z: this.smoothedLandmarks.hairlineCenter.z * beta + newLandmarks.hairlineCenter.z * alpha,
       },
-      chin: {
-        x: this.smoothedLandmarks.chin.x * beta + newLandmarks.chin.x * alpha,
-        y: this.smoothedLandmarks.chin.y * beta + newLandmarks.chin.y * alpha,
-        z: this.smoothedLandmarks.chin.z * beta + newLandmarks.chin.z * alpha,
-      },
-      leftEye: {
-        x: this.smoothedLandmarks.leftEye.x * beta + newLandmarks.leftEye.x * alpha,
-        y: this.smoothedLandmarks.leftEye.y * beta + newLandmarks.leftEye.y * alpha,
-        z: this.smoothedLandmarks.leftEye.z * beta + newLandmarks.leftEye.z * alpha,
-      },
-      rightEye: {
-        x: this.smoothedLandmarks.rightEye.x * beta + newLandmarks.rightEye.x * alpha,
-        y: this.smoothedLandmarks.rightEye.y * beta + newLandmarks.rightEye.y * alpha,
-        z: this.smoothedLandmarks.rightEye.z * beta + newLandmarks.rightEye.z * alpha,
-      },
+      pitch: this.smoothedLandmarks.pitch * beta + newLandmarks.pitch * alpha,
+      yaw: this.smoothedLandmarks.yaw * beta + newLandmarks.yaw * alpha,
+      roll: this.smoothedLandmarks.roll * beta + newLandmarks.roll * alpha,
+      headWidth: this.smoothedLandmarks.headWidth * beta + newLandmarks.headWidth * alpha,
       headHeight: this.smoothedLandmarks.headHeight * beta + newLandmarks.headHeight * alpha,
+      allLandmarks: newLandmarks.allLandmarks, // Don't smooth all landmarks array
       confidence: newLandmarks.confidence, // Don't smooth confidence
     };
   }
@@ -676,6 +676,7 @@ export class Simple2DAREngine {
   /**
    * Draw wig using precise facial landmarks
    * Provides accurate positioning based on forehead, temples, and head shape
+   * Auto-adjusts size based on head dimensions
    */
   private drawWigWithLandmarks(
     landmarks: FaceLandmarks,
@@ -706,18 +707,23 @@ export class Simple2DAREngine {
       y: landmarks.rightTemple.y * height,
     };
 
-    // Calculate wig dimensions based on head landmarks
+    // Calculate wig dimensions based on head landmarks with auto-scaling
     const headWidth = Math.abs(rightTemple.x - leftTemple.x);
-    const wigWidth = headWidth * scale;
+    const headWidthRatio = headWidth / width;
+    const autoScaleAdjustment = this.calculateAutoScale(headWidthRatio);
+    const finalScale = scale * autoScaleAdjustment;
+    
+    const wigWidth = headWidth * finalScale;
     const wigHeight = (this.wigImage.height / this.wigImage.width) * wigWidth;
     
     // Center X between temples
     const centerX = (leftTemple.x + rightTemple.x) / 2;
     
-    // Position wig starting from forehead top, extending upward
-    // offsetY is relative to forehead position (negative = higher up)
+    // Position wig ABOVE the forehead to cover only hair area
+    // Start from top of head (above forehead), not at forehead
+    // offsetY is relative to wig height (negative = move up, positive = move down)
     const wigX = centerX - wigWidth / 2 + (headWidth * offsetX);
-    const wigY = foreheadTop.y - (wigHeight * 0.5) + (wigHeight * offsetY);
+    const wigY = foreheadTop.y - wigHeight + (wigHeight * offsetY);
 
     // Save context state
     this.ctx.save();
@@ -765,9 +771,11 @@ export class Simple2DAREngine {
     const wigWidth = face.width * finalScale;
     const wigHeight = (this.wigImage.height / this.wigImage.width) * wigWidth;
     
-    // Apply both horizontal and vertical offsets
+    // Position wig ABOVE the detected face area to cover only hair
+    // Center horizontally, position vertically above face
     const wigX = face.x + (face.width - wigWidth) / 2 + (face.width * offsetX);
-    const wigY = face.y + face.height * offsetY;
+    // Start from top of face, move wig up by its full height, then apply offset
+    const wigY = face.y - wigHeight + (wigHeight * offsetY);
 
     // Save context state
     this.ctx.save();
