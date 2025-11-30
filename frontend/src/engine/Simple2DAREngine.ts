@@ -810,26 +810,26 @@ export class Simple2DAREngine {
   }
 
   /**
-   * Calculate automatic scale adjustment based on face/head size
-   * Ensures wig looks proportional regardless of face size or distance from camera
-   * Automatically adjusts wig size to match head dimensions
+   * Calculate automatic scale adjustment based on head size
+   * Ensures wig ALWAYS fits the head perfectly regardless of size or distance
+   * More aggressive scaling for perfect fit
    */
   private calculateAutoScale(faceWidthRatio: number): number {
     // faceWidthRatio: 0.0 to 1.0 (percentage of canvas width)
     
+    // Target: wig should always match head width perfectly
     // Optimal face width ratio is around 0.5-0.7 (50-70% of canvas)
     const optimalRatio = 0.6;
     
-    // If face is smaller than optimal, increase wig size more aggressively
-    // If face is larger than optimal, decrease wig size proportionally
+    // More aggressive scaling to ensure wig always fits head
     if (faceWidthRatio < optimalRatio) {
-      // Face is small (far from camera) - increase wig size significantly
-      const adjustment = 1 + (optimalRatio - faceWidthRatio) * 0.8;
-      return Math.min(adjustment, 1.5); // Cap at 1.5x for larger heads
+      // Face is small (far from camera) - increase wig size aggressively
+      const adjustment = 1 + (optimalRatio - faceWidthRatio) * 1.2;
+      return Math.min(adjustment, 2.0); // Allow up to 2x for very small/distant heads
     } else if (faceWidthRatio > optimalRatio) {
-      // Face is large (close to camera) - decrease wig size proportionally
-      const adjustment = 1 - (faceWidthRatio - optimalRatio) * 0.4;
-      return Math.max(adjustment, 0.7); // Floor at 0.7x for smaller heads
+      // Face is large (close to camera) - decrease wig size to fit
+      const adjustment = 1 - (faceWidthRatio - optimalRatio) * 0.6;
+      return Math.max(adjustment, 0.5); // Allow down to 0.5x for very large/close heads
     }
     
     // Face is optimal size - no adjustment needed
