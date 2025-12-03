@@ -1,6 +1,16 @@
-# Spooky Wigs - Year-Round Wig & Accessory Store
+# Spooky Wigs - Year-Round Wig & Accessory Store 📱
 
 An e-commerce platform with augmented reality try-on capabilities for wigs and head accessories. Professional, casual, fashion, and costume styles - all with a hauntingly beautiful shopping experience.
+
+## 📱 Mobile-First Design
+
+**"If it's not on mobile, it doesn't exist."**
+
+This application is built mobile-first, optimized for phone cameras (which are typically superior to webcams). The AR try-on experience works beautifully on smartphones with touch gestures, photo upload, and responsive design throughout.
+
+**Quick Mobile Test:** Start the dev server, get your computer's IP address, and access from your phone on the same WiFi: `http://YOUR_IP:3000`
+
+See [Mobile Testing Guide](./MOBILE_TESTING_QUICK_REFERENCE.md) for details.
 
 ## Project Structure
 
@@ -77,6 +87,24 @@ npm run dev:backend   # Backend on http://localhost:5000
 - `npm run build --workspace=backend` - Compile TypeScript
 - `npm run start --workspace=backend` - Run compiled backend
 
+## 📱 Mobile Experience
+
+### Test on Your Phone (Recommended!)
+
+1. Start dev server: `npm run dev`
+2. Get your IP: `ipconfig` (Windows) or `ifconfig` (Mac/Linux)
+3. Access from phone: `http://YOUR_IP:3000`
+
+### Mobile Features
+- **Superior Camera Quality**: Phone cameras > webcams
+- **Touch Gestures**: Drag to position, tap to select
+- **Photo Upload**: Alternative to live camera
+- **Responsive Design**: Optimized for all screen sizes
+- **Portrait Mode**: 9:16 AR canvas for phones
+- **Auto-Fit**: One-tap wig positioning
+
+See [Mobile Testing Quick Reference](./MOBILE_TESTING_QUICK_REFERENCE.md) for complete guide.
+
 ## Technology Stack
 
 ### Frontend
@@ -85,8 +113,9 @@ npm run dev:backend   # Backend on http://localhost:5000
 - Three.js + React Three Fiber for 3D rendering
 - TensorFlow.js with MediaPipe for face tracking
 - Zustand for state management
-- TailwindCSS for styling
+- TailwindCSS for styling (mobile-first)
 - Stripe for payments
+- **Mobile-optimized**: Touch events, responsive breakpoints, PWA-ready
 
 ### Backend
 - Node.js with Express

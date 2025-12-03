@@ -212,6 +212,13 @@ export class MediaPipeFaceMeshTracker {
   }
 
   /**
+   * Check if tracker is initialized
+   */
+  isReady(): boolean {
+    return this.isInitialized;
+  }
+
+  /**
    * Dispose resources
    */
   dispose(): void {

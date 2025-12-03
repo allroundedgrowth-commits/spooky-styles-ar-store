@@ -12,9 +12,12 @@ import { HairSegmentationModule, SegmentationResult } from './HairSegmentationMo
 import { HairVolumeDetector, VolumeMetrics, VolumeCategory } from './HairVolumeDetector';
 import { HairFlatteningEngine, AdjustmentMode, FlattenedResult } from './HairFlatteningEngine';
 import { MediaPipeFaceMeshTracker, FaceLandmarks } from './MediaPipeFaceMesh';
+import { ProcessingError as SegmentationProcessingError, SegmentationErrorType } from './SegmentationErrorHandler';
+import { WigAnalyzer, WigAnalysis } from './WigAnalyzer';
 
-// Re-export types for convenience
-export type { AdjustmentMode, VolumeCategory };
+// Re-export for convenience
+export { AdjustmentMode };
+export type { VolumeCategory };
 
 export interface FaceDetection {
   x: number;
@@ -56,11 +59,7 @@ export interface HairSegmentationData {
   timestamp: number;
 }
 
-export interface ProcessingError {
-  type: 'SEGMENTATION_FAILED' | 'TIMEOUT' | 'LOW_CONFIDENCE' | 'MODEL_LOAD_FAILED';
-  message: string;
-  timestamp: number;
-}
+export type ProcessingError = SegmentationProcessingError;
 
 export interface PerformanceMetrics {
   segmentationFPS: number;
@@ -90,6 +89,10 @@ export class Simple2DAREngine {
   private smoothedLandmarks: FaceLandmarks | null = null;
   private readonly SMOOTHING_FACTOR = 0.3; // Lower = smoother but more lag, Higher = more responsive but jittery
 
+  // Wig analyzer for intelligent fitting
+  private wigAnalyzer: WigAnalyzer;
+  private wigAnalysis: WigAnalysis | null = null;
+
   // Hair flattening modules (optional)
   private hairSegmentation: HairSegmentationModule | null = null;
   private hairVolumeDetector: HairVolumeDetector | null = null;
@@ -105,12 +108,13 @@ export class Simple2DAREngine {
     this.videoElement = videoElement;
     this.canvasElement = canvasElement;
     this.ctx = canvasElement.getContext('2d')!;
+    this.wigAnalyzer = new WigAnalyzer();
     this.config = {
       wigImageUrl: '',
-      scale: 1.5,        // Larger scale for better visibility
-      offsetY: 0.2,      // Fine-tune vertical position (0.2 = slight overlap with forehead for natural look)
+      scale: 1.3,        // Will be overridden by wig analysis
+      offsetY: -0.05,    // Will be overridden by wig analysis
       offsetX: 0,
-      opacity: 0.85,     // More opaque for better visibility
+      opacity: 0.9,      // High opacity for realistic appearance
       enableHairFlattening: false,
     };
 
@@ -134,17 +138,47 @@ export class Simple2DAREngine {
 
   async initialize(): Promise<void> {
     try {
-      // Request camera access with portrait orientation for better face framing
-      this.stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 720 },  // Portrait width
-          height: { ideal: 1280 }, // Portrait height
+      // Check if we're on mobile
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      
+      // Mobile-friendly camera constraints with fallbacks
+      const constraints: MediaStreamConstraints = {
+        video: isMobile ? {
+          // Mobile: simpler constraints for better compatibility
           facingMode: 'user',
-          aspectRatio: { ideal: 9/16 }, // Portrait aspect ratio
+          width: { ideal: 720, max: 1280 },
+          height: { ideal: 1280, max: 1920 },
+        } : {
+          // Desktop: more specific constraints
+          width: { ideal: 720 },
+          height: { ideal: 1280 },
+          facingMode: 'user',
+          aspectRatio: { ideal: 9/16 },
         },
-      });
+        audio: false,
+      };
+
+      try {
+        // Try with ideal constraints first
+        this.stream = await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (error) {
+        console.warn('Failed with ideal constraints, trying basic constraints:', error);
+        
+        // Fallback to minimal constraints for maximum compatibility
+        this.stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: 'user',
+          },
+          audio: false,
+        });
+      }
 
       this.videoElement.srcObject = this.stream;
+      
+      // Add playsinline attribute for iOS
+      this.videoElement.setAttribute('playsinline', 'true');
+      this.videoElement.setAttribute('webkit-playsinline', 'true');
+      
       await this.videoElement.play();
 
       // Set canvas size to match video with portrait orientation
@@ -163,10 +197,24 @@ export class Simple2DAREngine {
         faceTracking: this.useMediaPipe ? 'MediaPipe Face Mesh' : 'Fallback',
         hairFlattening: this.config.enableHairFlattening,
         videoSize: `${this.canvasElement.width}x${this.canvasElement.height}`,
+        isMobile,
       });
     } catch (error) {
       console.error('Failed to initialize camera:', error);
-      throw error;
+      
+      // Provide helpful error message
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      if (errorMessage.includes('Permission denied') || errorMessage.includes('NotAllowedError')) {
+        throw new Error('Camera access denied. Please allow camera permissions in your browser settings.');
+      } else if (errorMessage.includes('NotFoundError') || errorMessage.includes('DevicesNotFoundError')) {
+        throw new Error('No camera found. Please ensure your device has a camera.');
+      } else if (errorMessage.includes('NotReadableError')) {
+        throw new Error('Camera is already in use by another application.');
+      } else if (errorMessage.includes('NotSupportedError') || errorMessage.includes('https')) {
+        throw new Error('Camera access requires HTTPS. Please use a secure connection.');
+      } else {
+        throw new Error(`Failed to access camera: ${errorMessage}`);
+      }
     }
   }
 
@@ -202,9 +250,10 @@ export class Simple2DAREngine {
       
       // Set error state but don't fail the entire initialization
       this.hairProcessingState.error = {
-        type: 'MODEL_LOAD_FAILED',
+        type: SegmentationErrorType.MODEL_LOAD_FAILED,
         message: `Failed to initialize hair flattening: ${error}`,
         timestamp: Date.now(),
+        retryable: false,
       };
 
       // Disable hair flattening
@@ -247,9 +296,37 @@ export class Simple2DAREngine {
       const img = new Image();
       img.crossOrigin = 'anonymous';
       
-      img.onload = () => {
+      img.onload = async () => {
         this.wigImage = img;
         console.log('Wig image loaded:', config.wigImageUrl);
+        
+        // Analyze wig to detect hairline and optimal positioning
+        try {
+          this.wigAnalysis = await this.wigAnalyzer.analyzeWig(img);
+          console.log('Wig analysis complete:', {
+            hairlineY: `${(this.wigAnalysis.hairlineY * 100).toFixed(1)}%`,
+            confidence: `${(this.wigAnalysis.hairlineConfidence * 100).toFixed(0)}%`,
+            recommendedScale: this.wigAnalysis.recommendedScale,
+            recommendedOffsetY: this.wigAnalysis.recommendedOffsetY,
+            hasTransparency: this.wigAnalysis.hasTransparency,
+          });
+          
+          // Apply recommended positioning if not explicitly overridden
+          if (!config.scale) {
+            this.config.scale = this.wigAnalysis.recommendedScale;
+          }
+          if (!config.offsetY) {
+            this.config.offsetY = this.wigAnalysis.recommendedOffsetY;
+          }
+          
+          console.log('Using positioning:', {
+            scale: this.config.scale,
+            offsetY: this.config.offsetY,
+          });
+        } catch (error) {
+          console.warn('Wig analysis failed, using defaults:', error);
+        }
+        
         resolve();
       };
 
@@ -419,9 +496,10 @@ export class Simple2DAREngine {
       console.error('Hair processing error:', error);
       
       this.hairProcessingState.error = {
-        type: 'SEGMENTATION_FAILED',
+        type: SegmentationErrorType.SEGMENTATION_FAILED,
         message: `Hair processing failed: ${error}`,
         timestamp: Date.now(),
+        retryable: true,
       };
 
       // Return original frame on error
@@ -487,9 +565,10 @@ export class Simple2DAREngine {
     // Center X between temples
     const centerX = (leftTemple.x + rightTemple.x) / 2;
     
-    // Position wig to cover hair area (above forehead)
-    const wigHeight = faceHeight * 0.6; // Wig covers upper 60% of head
-    const wigY = foreheadTop.y - wigHeight * 0.5; // Start above forehead
+    // FIXED: Position wig to sit naturally on head
+    // The wig should start slightly above the forehead and extend upward
+    const wigHeight = faceHeight * 0.7; // Wig covers 70% of head height
+    const wigY = foreheadTop.y - wigHeight * 0.15; // Start just slightly above forehead (15% overlap)
     
     return {
       x: centerX - faceWidth / 2,
@@ -676,7 +755,7 @@ export class Simple2DAREngine {
 
   /**
    * Draw wig using precise facial landmarks
-   * Positions wig on TOP of head covering hair area, leaving face visible
+   * Positions wig on top of face with proper layering
    * Auto-adjusts size based on head dimensions
    */
   private drawWigWithLandmarks(
@@ -720,16 +799,33 @@ export class Simple2DAREngine {
     // Center X between temples
     const centerX = (leftTemple.x + rightTemple.x) / 2;
     
-    // CORRECT POSITIONING: Wig sits on head like a real wig
-    // The wig's BOTTOM edge should be at the hairline/forehead
-    // The wig extends UPWARD to cover the hair area
-    // offsetY allows fine-tuning (negative = higher up, positive = lower down)
+    // INTELLIGENT POSITIONING: Use detected wig hairline for perfect fit
     const wigX = centerX - wigWidth / 2 + (headWidth * offsetX);
     
-    // Use hairline as the natural bottom edge of the wig
-    // Apply offsetY as a percentage of wig height for fine control
-    const wigBottomEdge = hairlineCenter.y + (wigHeight * offsetY);
-    const wigY = wigBottomEdge - wigHeight;
+    // If we have wig analysis, use the detected hairline position
+    let wigY: number;
+    if (this.wigAnalysis) {
+      // The wig's hairline (detected in the image) should align with the face's hairline
+      // wigAnalysis.hairlineY tells us where the hairline is in the wig image (0-1)
+      // We need to position the wig so its hairline matches the face hairline
+      
+      const wigHairlineOffset = this.wigAnalysis.hairlineY * wigHeight; // Pixels from top of wig to hairline
+      const faceHairlineY = hairlineCenter.y; // Where hairline should be on face
+      
+      // Position wig so its hairline aligns with face hairline
+      wigY = faceHairlineY - wigHairlineOffset + (wigHeight * offsetY);
+      
+      console.log('Intelligent positioning:', {
+        wigHairlineInImage: `${(this.wigAnalysis.hairlineY * 100).toFixed(1)}%`,
+        wigHairlineOffset: `${wigHairlineOffset.toFixed(0)}px`,
+        faceHairlineY: `${faceHairlineY.toFixed(0)}px`,
+        finalWigY: `${wigY.toFixed(0)}px`,
+      });
+    } else {
+      // Fallback: assume hairline is 20% from bottom of wig
+      const wigBottomEdge = hairlineCenter.y + (wigHeight * 0.2) + (wigHeight * offsetY);
+      wigY = wigBottomEdge - wigHeight;
+    }
 
     // Save context state
     this.ctx.save();
@@ -737,16 +833,34 @@ export class Simple2DAREngine {
     // Set transparency
     this.ctx.globalAlpha = opacity;
     
+    // Use 'source-over' (default) to draw wig ON TOP of face
+    // This ensures wig is visible and layers properly
+    this.ctx.globalCompositeOperation = 'source-over';
+    
     // Apply color tint if specified
     if (wigColor) {
-      this.ctx.globalCompositeOperation = 'multiply';
-      this.ctx.fillStyle = wigColor;
-      this.ctx.fillRect(wigX, wigY, wigWidth, wigHeight);
-      this.ctx.globalCompositeOperation = 'destination-in';
-      this.ctx.drawImage(this.wigImage, wigX, wigY, wigWidth, wigHeight);
+      // Create temporary canvas for color tinting
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = wigWidth;
+      tempCanvas.height = wigHeight;
+      const tempCtx = tempCanvas.getContext('2d')!;
+      
+      // Draw wig on temp canvas
+      tempCtx.drawImage(this.wigImage, 0, 0, wigWidth, wigHeight);
+      
+      // Apply color tint
+      tempCtx.globalCompositeOperation = 'multiply';
+      tempCtx.fillStyle = wigColor;
+      tempCtx.fillRect(0, 0, wigWidth, wigHeight);
+      
+      // Restore alpha channel
+      tempCtx.globalCompositeOperation = 'destination-in';
+      tempCtx.drawImage(this.wigImage, 0, 0, wigWidth, wigHeight);
+      
+      // Draw tinted wig behind face
+      this.ctx.drawImage(tempCanvas, wigX, wigY);
     } else {
-      // Use 'source-over' for normal blending
-      this.ctx.globalCompositeOperation = 'source-over';
+      // Draw wig behind face (destination-over)
       this.ctx.drawImage(this.wigImage, wigX, wigY, wigWidth, wigHeight);
     }
     
@@ -757,6 +871,7 @@ export class Simple2DAREngine {
   /**
    * Draw wig using bounding box (fallback method)
    * Used when MediaPipe landmarks are not available
+   * Draws wig on top of face with proper layering
    */
   private drawWigWithBoundingBox(
     face: FaceDetection,
@@ -777,31 +892,58 @@ export class Simple2DAREngine {
     const wigWidth = face.width * finalScale;
     const wigHeight = (this.wigImage.height / this.wigImage.width) * wigWidth;
     
-    // Position wig to sit ON TOP of head like a real wig
-    // face.y represents the hairline (top of forehead)
-    // Wig's bottom edge sits at hairline, extends upward
+    // INTELLIGENT POSITIONING: Use detected wig hairline for perfect fit
     const wigX = face.x + (face.width - wigWidth) / 2 + (face.width * offsetX);
     
-    // Apply offsetY as percentage of wig height for fine control
-    const wigBottomEdge = face.y + (wigHeight * offsetY);
-    const wigY = wigBottomEdge - wigHeight;
+    // If we have wig analysis, use the detected hairline position
+    let wigY: number;
+    if (this.wigAnalysis) {
+      // The wig's hairline (detected in the image) should align with the face's hairline
+      const wigHairlineOffset = this.wigAnalysis.hairlineY * wigHeight;
+      const faceHairlineY = face.y;
+      
+      // Position wig so its hairline aligns with face hairline
+      wigY = faceHairlineY - wigHairlineOffset + (wigHeight * offsetY);
+    } else {
+      // Fallback: assume hairline is 20% from bottom of wig
+      const wigBottomEdge = face.y + (wigHeight * 0.2) + (wigHeight * offsetY);
+      wigY = wigBottomEdge - wigHeight;
+    }
 
     // Save context state
     this.ctx.save();
     
-    // Set transparency - allows face to show through
+    // Set transparency
     this.ctx.globalAlpha = opacity;
+    
+    // Use 'source-over' (default) to draw wig ON TOP of face
+    // This ensures wig is visible and layers properly
+    this.ctx.globalCompositeOperation = 'source-over';
     
     // Apply color tint if specified
     if (wigColor) {
-      this.ctx.globalCompositeOperation = 'multiply';
-      this.ctx.fillStyle = wigColor;
-      this.ctx.fillRect(wigX, wigY, wigWidth, wigHeight);
-      this.ctx.globalCompositeOperation = 'destination-in';
-      this.ctx.drawImage(this.wigImage, wigX, wigY, wigWidth, wigHeight);
+      // Create temporary canvas for color tinting
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = wigWidth;
+      tempCanvas.height = wigHeight;
+      const tempCtx = tempCanvas.getContext('2d')!;
+      
+      // Draw wig on temp canvas
+      tempCtx.drawImage(this.wigImage, 0, 0, wigWidth, wigHeight);
+      
+      // Apply color tint
+      tempCtx.globalCompositeOperation = 'multiply';
+      tempCtx.fillStyle = wigColor;
+      tempCtx.fillRect(0, 0, wigWidth, wigHeight);
+      
+      // Restore alpha channel
+      tempCtx.globalCompositeOperation = 'destination-in';
+      tempCtx.drawImage(this.wigImage, 0, 0, wigWidth, wigHeight);
+      
+      // Draw tinted wig behind face
+      this.ctx.drawImage(tempCanvas, wigX, wigY);
     } else {
-      // Use 'source-over' for normal blending
-      this.ctx.globalCompositeOperation = 'source-over';
+      // Draw wig behind face (destination-over)
       this.ctx.drawImage(this.wigImage, wigX, wigY, wigWidth, wigHeight);
     }
     

@@ -33,7 +33,7 @@ export class HairVolumeDetector {
    * @param faceRegion - Bounding box of the detected face
    * @returns Volume metrics including score (0-100), density, and distribution
    */
-  calculateVolume(hairMask: ImageData, faceRegion: BoundingBox): VolumeMetrics {
+  calculateVolume(hairMask: ImageData, _faceRegion: BoundingBox): VolumeMetrics {
     const { width, height, data } = hairMask;
     
     // Count hair pixels (assuming white pixels = 255 represent hair)

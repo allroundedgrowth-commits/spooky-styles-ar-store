@@ -56,10 +56,10 @@ const Home: React.FC = () => {
           <div className="bg-halloween-darkPurple p-6 rounded-lg border-2 border-halloween-purple hover:border-halloween-orange transition-colors">
             <div className="text-4xl mb-4">🎨</div>
             <h3 className="text-xl font-bold text-halloween-orange mb-2">
-              Customize & Layer
+              Customize Colors
             </h3>
             <p className="text-gray-300">
-              Choose from multiple colors and layer accessories to create your perfect look. Endless possibilities.
+              Choose from multiple colors to create your perfect look. Endless possibilities with our color customization.
             </p>
           </div>
         </div>
@@ -157,19 +157,19 @@ const Home: React.FC = () => {
         </div>
 
         {/* CTA Section */}
-        <div className="bg-gradient-to-r from-halloween-purple to-halloween-darkPurple p-8 rounded-lg text-center">
+        <div className="bg-gradient-to-r from-halloween-purple to-halloween-darkPurple p-8 rounded-lg text-center border-2 border-halloween-purple/30">
           <h2 className="text-3xl font-bold text-halloween-orange mb-4">
-            Why Choose Spooky Wigs?
+            Why Choose Spooky Wigs? 🕷️
           </h2>
           <p className="text-gray-300 mb-6">
-            A unique shopping experience that makes finding your perfect wig simple and fun. 
+            A hauntingly unique shopping experience that makes finding your perfect wig simple and fun. 
             Try on any style with AR, customize colors, and shop with confidence—365 days a year.
           </p>
           <Link
             to="/products"
-            className="bg-halloween-orange hover:bg-orange-600 text-white font-bold py-3 px-8 rounded-lg transition-colors inline-block"
+            className="bg-halloween-orange hover:bg-orange-600 text-white font-bold py-3 px-8 rounded-lg transition-colors inline-block shadow-lg hover:shadow-halloween-orange/50"
           >
-            Explore All Wigs
+            Explore All Wigs ✨
           </Link>
         </div>
       </div>

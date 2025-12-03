@@ -42,6 +42,8 @@ function App() {
             <Route path="account" element={<Account />} />
             <Route path="ar-tryon/:id" element={<ARTryOn />} />
             <Route path="ar-tryon" element={<ARTryOn />} />
+            <Route path="simple-2d-ar-tryon/:id" element={<ARTryOn />} />
+            <Route path="simple-2d-ar-tryon" element={<ARTryOn />} />
             <Route
               path="admin"
               element={

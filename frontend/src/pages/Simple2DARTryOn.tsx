@@ -5,6 +5,10 @@ import { productService } from '../services/product.service';
 import { Product } from '../types/product';
 import { useCartStore } from '../store/cartStore';
 import { VolumeScoreIndicator } from '../components/AR/VolumeScoreIndicator';
+import { AdjustmentModeToggle } from '../components/AR/AdjustmentModeToggle';
+import { HairAdjustmentMessage } from '../components/AR/HairAdjustmentMessage';
+import { ComparisonView } from '../components/AR/ComparisonView';
+import { AdjustmentMode } from '../engine/Simple2DAREngine';
 
 export const Simple2DARTryOn: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -19,6 +23,11 @@ export const Simple2DARTryOn: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [showFaceGuide, setShowFaceGuide] = useState(false);
+  const [showInfoMessage, setShowInfoMessage] = useState(false);
+  const [showComparison, setShowComparison] = useState(false);
+  const [currentAdjustmentMode, setCurrentAdjustmentMode] = useState<AdjustmentMode>(AdjustmentMode.NORMAL);
+  const [originalImage, setOriginalImage] = useState<ImageData | null>(null);
+  const [adjustedImage, setAdjustedImage] = useState<ImageData | null>(null);
   const addToCart = useCartStore((state) => state.addItem);
 
   const {
@@ -36,6 +45,8 @@ export const Simple2DARTryOn: React.FC = () => {
     switchToCamera,
     updateConfig,
     takeScreenshot,
+    setAdjustmentMode,
+    isHairFlatteningEnabled,
     stop,
   } = useSimple2DAR();
 
@@ -122,6 +133,7 @@ export const Simple2DARTryOn: React.FC = () => {
           offsetY,
           offsetX,
           opacity,
+          enableHairFlattening: true, // Enable smart hair adjustment
         });
       }
     } catch (err) {
@@ -145,9 +157,27 @@ export const Simple2DARTryOn: React.FC = () => {
         offsetY,
         offsetX,
         opacity,
+        enableHairFlattening: true, // Enable smart hair adjustment
       });
     }
   }, [isInitialized, product, selectedColor, scale, offsetY, offsetX, opacity]);
+
+  // Monitor hair processing state and show info message when auto-flattening is applied
+  useEffect(() => {
+    if (!hairProcessingState) return;
+
+    const { segmentationData, currentMode } = hairProcessingState;
+    
+    // Update current mode
+    if (currentMode) {
+      setCurrentAdjustmentMode(currentMode);
+    }
+
+    // Show info message when flattening is automatically applied
+    if (segmentationData && segmentationData.volumeScore > 40 && currentMode === AdjustmentMode.FLATTENED) {
+      setShowInfoMessage(true);
+    }
+  }, [hairProcessingState]);
 
   // Handle mouse/touch drag for wig positioning
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -281,6 +311,54 @@ export const Simple2DARTryOn: React.FC = () => {
     }
   };
 
+  // Handle adjustment mode change
+  const handleAdjustmentModeChange = (mode: AdjustmentMode) => {
+    setAdjustmentMode(mode);
+    setCurrentAdjustmentMode(mode);
+  };
+
+  // Handle info message dismiss
+  const handleDismissInfoMessage = () => {
+    setShowInfoMessage(false);
+  };
+
+  // Handle comparison view toggle
+  const handleToggleComparison = () => {
+    if (!showComparison && canvasRef.current) {
+      // Capture current images before showing comparison
+      const ctx = canvasRef.current.getContext('2d');
+      if (ctx) {
+        // Store current adjusted image
+        const currentImage = ctx.getImageData(0, 0, canvasRef.current.width, canvasRef.current.height);
+        setAdjustedImage(currentImage);
+        
+        // For original, we'd need to temporarily switch to normal mode
+        // For now, we'll use the current image as a placeholder
+        setOriginalImage(currentImage);
+      }
+    }
+    setShowComparison(!showComparison);
+  };
+
+  // Handle comparison capture
+  const handleComparisonCapture = (compositeImage: ImageData) => {
+    // Create a temporary canvas to convert ImageData to data URL
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = compositeImage.width;
+    tempCanvas.height = compositeImage.height;
+    const tempCtx = tempCanvas.getContext('2d');
+    if (tempCtx) {
+      tempCtx.putImageData(compositeImage, 0, 0);
+      const dataUrl = tempCanvas.toDataURL('image/png');
+      
+      // Download the comparison image
+      const link = document.createElement('a');
+      link.download = `${product?.name}-comparison.png`;
+      link.href = dataUrl;
+      link.click();
+    }
+  };
+
   if (!product) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-purple-900 to-black flex items-center justify-center">
@@ -308,6 +386,25 @@ export const Simple2DARTryOn: React.FC = () => {
           {/* AR View */}
           <div className="space-y-4">
             <div className="relative bg-black rounded-lg overflow-hidden aspect-[9/16] max-h-[700px]">
+              {/* Hair Adjustment Info Message */}
+              {isInitialized && showInfoMessage && (
+                <HairAdjustmentMessage
+                  show={showInfoMessage}
+                  onDismiss={handleDismissInfoMessage}
+                  autoHideDuration={4000}
+                />
+              )}
+
+              {/* Comparison View Overlay */}
+              {showComparison && (
+                <ComparisonView
+                  originalImage={originalImage}
+                  adjustedImage={adjustedImage}
+                  currentMode={currentAdjustmentMode}
+                  onCapture={handleComparisonCapture}
+                  isActive={showComparison}
+                />
+              )}
               {/* Video and Canvas - always rendered but hidden when not initialized */}
               <video
                 ref={videoRef}
@@ -370,12 +467,28 @@ export const Simple2DARTryOn: React.FC = () => {
                     Choose how you want to try on this wig
                   </p>
                   
+                  {/* Mobile HTTPS Warning */}
+                  {/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) && 
+                   window.location.protocol === 'http:' && (
+                    <div className="bg-yellow-500/20 border border-yellow-500 rounded-lg p-4 max-w-md">
+                      <p className="text-yellow-300 font-semibold">📱 Mobile Camera Tip</p>
+                      <p className="text-yellow-200 text-sm mt-2">
+                        Camera requires HTTPS on mobile. We recommend using the "Upload Photo" option for best results!
+                      </p>
+                    </div>
+                  )}
+
                   {error && (
                     <div className="bg-red-500/20 border border-red-500 rounded-lg p-4 max-w-md">
                       <p className="text-red-300">{error}</p>
                       {cameraPermission === 'denied' && (
                         <p className="text-sm mt-2">
                           Camera blocked? No problem! Upload a photo instead.
+                        </p>
+                      )}
+                      {error.includes('HTTPS') && (
+                        <p className="text-sm mt-2">
+                          💡 <strong>Solution:</strong> Use "Upload Photo" option below - no HTTPS needed!
                         </p>
                       )}
                     </div>
@@ -495,6 +608,39 @@ export const Simple2DARTryOn: React.FC = () => {
                       />
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* Hair Flattening Controls */}
+              {isInitialized && isHairFlatteningEnabled() && hairProcessingState?.segmentationData && (
+                <div>
+                  <AdjustmentModeToggle
+                    currentMode={currentAdjustmentMode}
+                    onModeChange={handleAdjustmentModeChange}
+                    volumeScore={hairProcessingState.segmentationData.volumeScore}
+                    disabled={!hairProcessingState.isInitialized}
+                  />
+                  
+                  {/* Comparison View Toggle */}
+                  <button
+                    onClick={handleToggleComparison}
+                    className="w-full mt-3 bg-purple-700 hover:bg-purple-600 py-2 rounded-lg text-sm font-semibold transition flex items-center justify-center gap-2"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                      />
+                    </svg>
+                    {showComparison ? 'Hide Comparison' : 'Compare Before/After'}
+                  </button>
                 </div>
               )}
 

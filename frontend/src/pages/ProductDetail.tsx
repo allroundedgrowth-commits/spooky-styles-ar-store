@@ -273,12 +273,27 @@ const ProductDetail: React.FC = () => {
 
             {/* Action Buttons */}
             <div className="space-y-3">
-              {/* AR Try-On */}
+              {/* AR Try-On with Hair Flattening */}
+              {!product.is_accessory && (
+                <div className="space-y-2">
+                  <Link
+                    to={`/simple-2d-ar-tryon/${product.id}`}
+                    className="block w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white text-center px-6 py-4 rounded-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg hover:shadow-xl"
+                  >
+                    ✨ Try with Smart Hair Adjustment
+                  </Link>
+                  <p className="text-xs text-gray-400 text-center">
+                    AI-powered hair detection for realistic wig preview
+                  </p>
+                </div>
+              )}
+              
+              {/* Standard AR Try-On */}
               <Link
                 to={`/ar-tryon/${product.id}`}
-                className="block w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white text-center px-6 py-4 rounded-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg hover:shadow-xl"
+                className="block w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-center px-6 py-4 rounded-lg font-semibold hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl"
               >
-                📸 Virtual Try-On
+                📸 Virtual Try-On (3D)
               </Link>
               
               <button
@@ -293,6 +308,28 @@ const ProductDetail: React.FC = () => {
                 {isOutOfStock ? 'Out of Stock' : addingToCart ? 'Adding...' : 'Add to Cart'}
               </button>
             </div>
+
+            {/* Hair Flattening Feature Explanation */}
+            {!product.is_accessory && (
+              <div className="bg-gradient-to-r from-purple-900/30 to-pink-900/30 rounded-lg p-4 border border-purple-500/30">
+                <div className="flex items-start gap-3">
+                  <div className="text-2xl">✨</div>
+                  <div>
+                    <h3 className="text-white font-semibold mb-2">Smart Hair Adjustment</h3>
+                    <p className="text-sm text-gray-300 mb-2">
+                      Our AI-powered hair detection automatically adjusts your hair volume for a realistic wig preview. 
+                      See how the wig would look when worn with a wig cap!
+                    </p>
+                    <ul className="text-xs text-gray-400 space-y-1">
+                      <li>• Automatic hair volume detection</li>
+                      <li>• Three adjustment modes: Normal, Flattened, Bald</li>
+                      <li>• Real-time preview with natural lighting</li>
+                      <li>• Compare before and after views</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Additional Info */}
             <div className="border-t border-halloween-purple/30 pt-6 space-y-2 text-sm text-gray-400">

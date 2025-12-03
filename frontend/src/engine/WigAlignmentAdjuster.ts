@@ -103,7 +103,7 @@ export class WigAlignmentAdjuster {
 
     // Calculate center point of the head
     const centerX = bounds.minX + (bounds.maxX - bounds.minX) / 2;
-    const centerY = bounds.minY + (bounds.maxY - bounds.minY) / 2;
+    const _centerY = bounds.minY + (bounds.maxY - bounds.minY) / 2; // Reserved for future vertical alignment
 
     // Calculate scale based on head width
     const headWidth = bounds.maxX - bounds.minX;

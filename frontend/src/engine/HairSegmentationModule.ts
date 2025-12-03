@@ -339,6 +339,15 @@ export class HairSegmentationModule {
   }
 
   /**
+   * Get the last error that occurred
+   * 
+   * @returns Last processing error or null
+   */
+  getLastError(): ProcessingError | null {
+    return this.lastError;
+  }
+
+  /**
    * Dispose of the model and free resources
    * Should be called when the module is no longer needed
    */

@@ -10,7 +10,7 @@
  * Requirements: 10.1, 10.2, 10.3, 10.4
  */
 
-import type { HairSegmentationData } from './HairSegmentationModule';
+import type { HairSegmentationData } from './Simple2DAREngine';
 
 export interface BoundingBox {
   x: number;

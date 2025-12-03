@@ -18,26 +18,26 @@ interface SeasonalPromotionsProps {
 const defaultPromotions: Promotion[] = [
   {
     id: '1',
-    title: '🎃 Spooky Season Sale',
-    description: 'Get ready for Halloween with our biggest sale of the year!',
-    discount: '30% OFF',
-    link: '/products?category=featured',
-    endDate: 'October 31st',
-  },
-  {
-    id: '2',
-    title: '👻 Ghostly Wigs Collection',
-    description: 'New arrivals perfect for your haunted costume',
+    title: '🌙 New Arrivals',
+    description: 'Fresh styles for every occasion - professional, casual, and costume wigs',
     discount: '20% OFF',
-    link: '/products?theme=ghost',
+    link: '/products?category=featured',
     endDate: 'Limited Time',
   },
   {
+    id: '2',
+    title: '✨ AR Try-On Special',
+    description: 'Experience our cutting-edge AR technology - see before you buy',
+    discount: 'FREE Shipping',
+    link: '/ar-tryon',
+    endDate: 'All Orders',
+  },
+  {
     id: '3',
-    title: '🦇 Complete Your Look',
-    description: 'Bundle deals on wigs + accessories',
+    title: '🎭 Bundle & Save',
+    description: 'Special bundle deals on premium wigs',
     discount: 'Buy 2 Get 1 FREE',
-    link: '/inspirations',
+    link: '/products',
     endDate: 'While Supplies Last',
   },
 ];
@@ -47,21 +47,23 @@ const SeasonalPromotions: React.FC<SeasonalPromotionsProps> = ({
 }) => {
   return (
     <section className="py-12 px-4 bg-gradient-halloween relative overflow-hidden">
-      {/* Decorative elements */}
+      {/* Decorative elements - More creepy, less Halloween-specific */}
       <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
-        <div className="absolute top-10 left-10 text-6xl animate-float">🎃</div>
-        <div className="absolute top-20 right-20 text-5xl animate-float" style={{ animationDelay: '1s' }}>👻</div>
-        <div className="absolute bottom-10 left-1/4 text-4xl animate-float" style={{ animationDelay: '2s' }}>🦇</div>
-        <div className="absolute bottom-20 right-1/3 text-5xl animate-float" style={{ animationDelay: '0.5s' }}>🕷️</div>
+        <div className="absolute top-10 left-10 text-6xl animate-float">🕷️</div>
+        <div className="absolute top-20 right-20 text-5xl animate-float" style={{ animationDelay: '1s' }}>🦇</div>
+        <div className="absolute bottom-10 left-1/4 text-4xl animate-float" style={{ animationDelay: '2s' }}>🕸️</div>
+        <div className="absolute bottom-20 right-1/3 text-5xl animate-float" style={{ animationDelay: '0.5s' }}>👁️</div>
+        <div className="absolute top-1/2 left-1/3 text-4xl animate-float" style={{ animationDelay: '1.5s' }}>🦴</div>
+        <div className="absolute top-1/3 right-1/4 text-3xl animate-float" style={{ animationDelay: '2.5s' }}>🕷️</div>
       </div>
 
       <div className="max-w-7xl mx-auto relative z-10">
         <div className="text-center mb-10">
           <h2 className="text-4xl font-bold text-white mb-3 drop-shadow-lg">
-            🎃 Spooktacular Deals 🎃
+            ✨ Special Offers ✨
           </h2>
           <p className="text-halloween-orange text-lg">
-            Limited time Halloween offers - Don't miss out!
+            Exclusive deals on premium wigs - Transform your look today
           </p>
         </div>
 
@@ -130,7 +132,7 @@ const SeasonalPromotions: React.FC<SeasonalPromotionsProps> = ({
             to="/products"
             className="inline-block btn-primary text-lg px-8 py-3 shadow-lg hover:shadow-halloween-orange/50"
           >
-            View All Deals 🎃
+            Explore All Wigs ✨
           </Link>
         </div>
       </div>

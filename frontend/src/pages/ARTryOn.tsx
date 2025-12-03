@@ -81,7 +81,7 @@ const ARTryOn: React.FC = () => {
       // Load wig on top of the image
       if (product) {
         await loadWig({
-          wigImageUrl: product.thumbnail_url || '/placeholder-wig.png',
+          wigImageUrl: product.ar_image_url || product.image_url || product.thumbnail_url || '/placeholder-wig.png',
           wigColor: selectedColor,
           scale,
           offsetY,
@@ -102,7 +102,7 @@ const ARTryOn: React.FC = () => {
   useEffect(() => {
     if (isInitialized && product && !useUploadedImage) {
       loadWig({
-        wigImageUrl: product.thumbnail_url || '/placeholder-wig.png',
+        wigImageUrl: product.ar_image_url || product.image_url || product.thumbnail_url || '/placeholder-wig.png',
         wigColor: selectedColor,
         scale,
         offsetY,

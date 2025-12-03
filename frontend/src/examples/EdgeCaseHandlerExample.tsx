@@ -7,7 +7,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { EdgeCaseHandler, type EdgeCaseResult, type BoundingBox } from '../engine/EdgeCaseHandler';
-import type { HairSegmentationData } from '../engine/HairSegmentationModule';
+import type { HairSegmentationData } from '../engine/Simple2DAREngine';
 
 const EdgeCaseHandlerExample: React.FC = () => {
   const [edgeCaseResult, setEdgeCaseResult] = useState<EdgeCaseResult | null>(null);

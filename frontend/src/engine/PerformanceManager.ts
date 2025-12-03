@@ -167,7 +167,9 @@ export class PerformanceManager {
    * Update memory usage metric
    */
   updateMemoryUsage(): void {
+    // @ts-ignore - performance.memory is Chrome-specific
     if (performance.memory) {
+      // @ts-ignore - performance.memory is Chrome-specific
       this.metrics.memoryUsage = performance.memory.usedJSHeapSize / (1024 * 1024); // MB
       
       // Warn if memory usage is high (> 80MB for hair flattening)
@@ -258,7 +260,7 @@ export class PerformanceManager {
     }
     
     // Only degrade, never upgrade in this method
-    if (this.getQualityLevel(newQuality) < this.getQualityLevel(this.currentQuality)) {
+    if (this.getQualityLevelNumber(newQuality) < this.getQualityLevelNumber(this.currentQuality)) {
       this.currentQuality = newQuality;
       
       const settings = this.getQualitySettings(newQuality);
@@ -341,7 +343,7 @@ export class PerformanceManager {
   /**
    * Get numeric quality level for comparison
    */
-  private getQualityLevel(quality: QualityLevel): number {
+  private getQualityLevelNumber(quality: QualityLevel): number {
     switch (quality) {
       case 'high': return 3;
       case 'medium': return 2;

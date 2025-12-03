@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AR Try-On Debug Tool</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #0a0a0a;
+            color: #fff;
+        }
+        .section {
+            background: #1a1a1a;
+            border: 2px solid #8b5cf6;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        h1 {
+            color: #8b5cf6;
+            text-align: center;
+        }
+        h2 {
+            color: #f97316;
+            border-bottom: 2px solid #f97316;
+            padding-bottom: 10px;
+        }
+        .test-item {
+            padding: 10px;
+            margin: 10px 0;
+            background: #2a2a2a;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .status {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+        .status.pass {
+            background: #10b981;
+            color: #fff;
+        }
+        .status.fail {
+            background: #ef4444;
+            color: #fff;
+        }
+        .status.warn {
+            background: #f59e0b;
+            color: #000;
+        }
+        .status.pending {
+            background: #6b7280;
+            color: #fff;
+        }
+        button {
+            background: #8b5cf6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #7c3aed;
+        }
+        .log {
+            background: #000;
+            color: #0f0;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        .error {
+            color: #ef4444;
+        }
+        .success {
+            color: #10b981;
+        }
+        .info {
+            color: #3b82f6;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎃 AR Try-On Debug Tool</h1>
+    
+    <div class="section">
+        <h2>Quick Actions</h2>
+        <button onclick="runAllTests()">🔍 Run All Tests</button>
+        <button onclick="testCamera()">📷 Test Camera</button>
+        <button onclick="testMediaPipe()">🤖 Test MediaPipe</button>
+        <button onclick="clearLog()">🗑️ Clear Log</button>
+    </div>
+
+    <div class="section">
+        <h2>System Checks</h2>
+        <div id="system-checks"></div>
+    </div>
+
+    <div class="section">
+        <h2>API Checks</h2>
+        <div id="api-checks"></div>
+    </div>
+
+    <div class="section">
+        <h2>MediaPipe Checks</h2>
+        <div id="mediapipe-checks"></div>
+    </div>
+
+    <div class="section">
+        <h2>Debug Log</h2>
+        <div id="log" class="log"></div>
+    </div>
+
+    <script>
+        const log = (message, type = 'info') => {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : 'info';
+            logDiv.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        };
+
+        const clearLog = () => {
+            document.getElementById('log').innerHTML = '';
+            log('Log cleared', 'info');
+        };
+
+        const setStatus = (containerId, testName, status, message = '') => {
+            const container = document.getElementById(containerId);
+            const statusClass = status === 'pass' ? 'pass' : status === 'fail' ? 'fail' : status === 'warn' ? 'warn' : 'pending';
+            const statusText = status === 'pass' ? '✅ PASS' : status === 'fail' ? '❌ FAIL' : status === 'warn' ? '⚠️ WARN' : '⏳ PENDING';
+            
+            const existingItem = container.querySelector(`[data-test="${testName}"]`);
+            if (existingItem) {
+                existingItem.querySelector('.status').className = `status ${statusClass}`;
+                existingItem.querySelector('.status').textContent = statusText;
+            } else {
+                const item = document.createElement('div');
+                item.className = 'test-item';
+                item.setAttribute('data-test', testName);
+                item.innerHTML = `
+                    <span>${testName}${message ? ': ' + message : ''}</span>
+                    <span class="status ${statusClass}">${statusText}</span>
+                `;
+                container.appendChild(item);
+            }
+        };
+
+        // System Checks
+        const checkBrowser = () => {
+            log('Checking browser...', 'info');
+            const userAgent = navigator.userAgent;
+            let browser = 'Unknown';
+            
+            if (userAgent.includes('Chrome')) browser = 'Chrome';
+            else if (userAgent.includes('Firefox')) browser = 'Firefox';
+            else if (userAgent.includes('Safari')) browser = 'Safari';
+            else if (userAgent.includes('Edge')) browser = 'Edge';
+            
+            setStatus('system-checks', 'Browser', 'pass', browser);
+            log(`Browser: ${browser}`, 'success');
+        };
+
+        const checkHTTPS = () => {
+            log('Checking HTTPS...', 'info');
+            const isHTTPS = window.location.protocol === 'https:';
+            const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            
+            if (isHTTPS || isLocalhost) {
+                setStatus('system-checks', 'HTTPS/Localhost', 'pass');
+                log('HTTPS or localhost detected', 'success');
+            } else {
+                setStatus('system-checks', 'HTTPS/Localhost', 'warn', 'Camera may not work on mobile');
+                log('Not HTTPS - camera may not work on mobile', 'error');
+            }
+        };
+
+        const checkMediaDevices = () => {
+            log('Checking MediaDevices API...', 'info');
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                setStatus('system-checks', 'MediaDevices API', 'pass');
+                log('MediaDevices API available', 'success');
+            } else {
+                setStatus('system-checks', 'MediaDevices API', 'fail');
+                log('MediaDevices API not available', 'error');
+            }
+        };
+
+        // Camera Test
+        const testCamera = async () => {
+            log('Testing camera access...', 'info');
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                setStatus('system-checks', 'Camera Access', 'pass');
+                log('Camera access granted', 'success');
+                
+                // Stop the stream
+                stream.getTracks().forEach(track => track.stop());
+            } catch (error) {
+                setStatus('system-checks', 'Camera Access', 'fail', error.name);
+                log(`Camera access failed: ${error.name} - ${error.message}`, 'error');
+            }
+        };
+
+        // API Checks
+        const checkBackendAPI = async () => {
+            log('Checking backend API...', 'info');
+            const apiUrl = 'http://localhost:5000';
+            
+            try {
+                const response = await fetch(`${apiUrl}/api/products`);
+                if (response.ok) {
+                    const data = await response.json();
+                    setStatus('api-checks', 'Backend API', 'pass', `${data.length} products`);
+                    log(`Backend API responding: ${data.length} products found`, 'success');
+                } else {
+                    setStatus('api-checks', 'Backend API', 'fail', `Status ${response.status}`);
+                    log(`Backend API error: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                setStatus('api-checks', 'Backend API', 'fail', 'Not reachable');
+                log(`Backend API not reachable: ${error.message}`, 'error');
+            }
+        };
+
+        const checkProductImages = async () => {
+            log('Checking product images...', 'info');
+            const apiUrl = 'http://localhost:5000';
+            
+            try {
+                const response = await fetch(`${apiUrl}/api/products`);
+                if (response.ok) {
+                    const products = await response.json();
+                    const firstProduct = products[0];
+                    
+                    if (firstProduct) {
+                        const hasARImage = !!firstProduct.ar_image_url;
+                        const hasImage = !!firstProduct.image_url;
+                        const hasThumbnail = !!firstProduct.thumbnail_url;
+                        
+                        if (hasARImage || hasImage || hasThumbnail) {
+                            setStatus('api-checks', 'Product Images', 'pass');
+                            log(`Product images available: AR=${hasARImage}, Image=${hasImage}, Thumbnail=${hasThumbnail}`, 'success');
+                        } else {
+                            setStatus('api-checks', 'Product Images', 'fail', 'No images');
+                            log('No product images found', 'error');
+                        }
+                    }
+                }
+            } catch (error) {
+                setStatus('api-checks', 'Product Images', 'fail');
+                log(`Failed to check product images: ${error.message}`, 'error');
+            }
+        };
+
+        // MediaPipe Checks
+        const testMediaPipe = async () => {
+            log('Testing MediaPipe CDN...', 'info');
+            
+            try {
+                // Test Face Mesh
+                const faceMeshResponse = await fetch('https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js');
+                if (faceMeshResponse.ok) {
+                    setStatus('mediapipe-checks', 'Face Mesh CDN', 'pass');
+                    log('Face Mesh CDN accessible', 'success');
+                } else {
+                    setStatus('mediapipe-checks', 'Face Mesh CDN', 'fail');
+                    log('Face Mesh CDN not accessible', 'error');
+                }
+                
+                // Test Selfie Segmentation
+                const segmentationResponse = await fetch('https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js');
+                if (segmentationResponse.ok) {
+                    setStatus('mediapipe-checks', 'Selfie Segmentation CDN', 'pass');
+                    log('Selfie Segmentation CDN accessible', 'success');
+                } else {
+                    setStatus('mediapipe-checks', 'Selfie Segmentation CDN', 'fail');
+                    log('Selfie Segmentation CDN not accessible', 'error');
+                }
+            } catch (error) {
+                setStatus('mediapipe-checks', 'MediaPipe CDN', 'fail', 'Network error');
+                log(`MediaPipe CDN check failed: ${error.message}`, 'error');
+            }
+        };
+
+        const checkTensorFlow = () => {
+            log('Checking TensorFlow.js...', 'info');
+            if (typeof tf !== 'undefined') {
+                setStatus('mediapipe-checks', 'TensorFlow.js', 'pass');
+                log('TensorFlow.js loaded', 'success');
+            } else {
+                setStatus('mediapipe-checks', 'TensorFlow.js', 'warn', 'Not loaded (may load later)');
+                log('TensorFlow.js not loaded yet', 'info');
+            }
+        };
+
+        // Run All Tests
+        const runAllTests = async () => {
+            clearLog();
+            log('Starting diagnostic tests...', 'info');
+            log('='.repeat(50), 'info');
+            
+            // System checks
+            checkBrowser();
+            checkHTTPS();
+            checkMediaDevices();
+            await testCamera();
+            
+            // API checks
+            await checkBackendAPI();
+            await checkProductImages();
+            
+            // MediaPipe checks
+            await testMediaPipe();
+            checkTensorFlow();
+            
+            log('='.repeat(50), 'info');
+            log('Diagnostic tests complete!', 'success');
+        };
+
+        // Auto-run on load
+        window.addEventListener('load', () => {
+            log('AR Try-On Debug Tool loaded', 'success');
+            log('Click "Run All Tests" to start diagnostics', 'info');
+        });
+    </script>
+</body>
+</html>

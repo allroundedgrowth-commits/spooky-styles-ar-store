@@ -12,8 +12,12 @@ export default defineConfig({
     }),
   ],
   server: {
+    host: '0.0.0.0', // Allow network access
     port: 5173,
     strictPort: true,
+    // Enable HTTPS for mobile camera access
+    // Note: Self-signed cert will show warning - accept it to proceed
+    https: process.env.VITE_HTTPS === 'true' ? true : false,
     proxy: {
       '/api': {
         target: 'http://localhost:3000',
