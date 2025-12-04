@@ -340,8 +340,18 @@ export class Simple2DAREngine {
   }
 
   startRendering(): void {
+    console.log('🎬 [Simple2DAREngine] Starting rendering loop...');
+    let frameCount = 0;
+    
     const render = async () => {
       await this.renderFrame();
+      
+      // Log first few frames for debugging
+      if (frameCount < 5) {
+        console.log(`🎞️ [Simple2DAREngine] Frame ${frameCount} rendered`);
+      }
+      frameCount++;
+      
       this.animationFrameId = requestAnimationFrame(render);
     };
     render();
@@ -755,8 +765,7 @@ export class Simple2DAREngine {
 
   /**
    * Draw wig using precise facial landmarks
-   * Positions wig on top of face with proper layering
-   * Auto-adjusts size based on head dimensions
+   * OPTIMIZED: Fast and accurate positioning based on actual face measurements
    */
   private drawWigWithLandmarks(
     landmarks: FaceLandmarks,
@@ -771,61 +780,40 @@ export class Simple2DAREngine {
     const width = this.canvasElement.width;
     const height = this.canvasElement.height;
 
-    // Convert normalized coordinates to pixel coordinates
-    const hairlineCenter = {
-      x: landmarks.hairlineCenter.x * width,
-      y: landmarks.hairlineCenter.y * height,
+    // Convert normalized landmark coordinates to pixels
+    const foreheadTopPx = {
+      x: landmarks.foreheadTop.x * width,
+      y: landmarks.foreheadTop.y * height,
     };
     
-    const leftTemple = {
+    const leftTemplePx = {
       x: landmarks.leftTemple.x * width,
       y: landmarks.leftTemple.y * height,
     };
     
-    const rightTemple = {
+    const rightTemplePx = {
       x: landmarks.rightTemple.x * width,
       y: landmarks.rightTemple.y * height,
     };
 
-    // Calculate wig dimensions based on head width with auto-scaling
-    const headWidth = Math.abs(rightTemple.x - leftTemple.x);
-    const headWidthRatio = headWidth / width;
-    const autoScaleAdjustment = this.calculateAutoScale(headWidthRatio);
-    const finalScale = scale * autoScaleAdjustment;
+    // Calculate actual head width from temple to temple
+    const headWidthPx = Math.abs(rightTemplePx.x - leftTemplePx.x);
     
-    const wigWidth = headWidth * finalScale;
+    // Calculate wig width based on head width and scale
+    // Scale multiplier: 1.0 = exact head width, 1.3 = 30% wider (default)
+    const wigWidth = headWidthPx * scale;
+    
+    // Maintain aspect ratio
     const wigHeight = (this.wigImage.height / this.wigImage.width) * wigWidth;
     
-    // Center X between temples
-    const centerX = (leftTemple.x + rightTemple.x) / 2;
+    // Position wig centered horizontally on the head
+    const headCenterX = (leftTemplePx.x + rightTemplePx.x) / 2;
+    const wigX = headCenterX - wigWidth / 2 + (width * offsetX);
     
-    // INTELLIGENT POSITIONING: Use detected wig hairline for perfect fit
-    const wigX = centerX - wigWidth / 2 + (headWidth * offsetX);
-    
-    // If we have wig analysis, use the detected hairline position
-    let wigY: number;
-    if (this.wigAnalysis) {
-      // The wig's hairline (detected in the image) should align with the face's hairline
-      // wigAnalysis.hairlineY tells us where the hairline is in the wig image (0-1)
-      // We need to position the wig so its hairline matches the face hairline
-      
-      const wigHairlineOffset = this.wigAnalysis.hairlineY * wigHeight; // Pixels from top of wig to hairline
-      const faceHairlineY = hairlineCenter.y; // Where hairline should be on face
-      
-      // Position wig so its hairline aligns with face hairline
-      wigY = faceHairlineY - wigHairlineOffset + (wigHeight * offsetY);
-      
-      console.log('Intelligent positioning:', {
-        wigHairlineInImage: `${(this.wigAnalysis.hairlineY * 100).toFixed(1)}%`,
-        wigHairlineOffset: `${wigHairlineOffset.toFixed(0)}px`,
-        faceHairlineY: `${faceHairlineY.toFixed(0)}px`,
-        finalWigY: `${wigY.toFixed(0)}px`,
-      });
-    } else {
-      // Fallback: assume hairline is 20% from bottom of wig
-      const wigBottomEdge = hairlineCenter.y + (wigHeight * 0.2) + (wigHeight * offsetY);
-      wigY = wigBottomEdge - wigHeight;
-    }
+    // Position wig vertically at hairline
+    // The wig bottom should align with forehead top (hairline)
+    // Subtract wig height so bottom edge sits at hairline
+    const wigY = foreheadTopPx.y - wigHeight + (height * offsetY);
 
     // Save context state
     this.ctx.save();
@@ -833,34 +821,27 @@ export class Simple2DAREngine {
     // Set transparency
     this.ctx.globalAlpha = opacity;
     
-    // Use 'source-over' (default) to draw wig ON TOP of face
-    // This ensures wig is visible and layers properly
+    // Draw wig on top
     this.ctx.globalCompositeOperation = 'source-over';
     
     // Apply color tint if specified
     if (wigColor) {
-      // Create temporary canvas for color tinting
       const tempCanvas = document.createElement('canvas');
       tempCanvas.width = wigWidth;
       tempCanvas.height = wigHeight;
       const tempCtx = tempCanvas.getContext('2d')!;
       
-      // Draw wig on temp canvas
       tempCtx.drawImage(this.wigImage, 0, 0, wigWidth, wigHeight);
       
-      // Apply color tint
       tempCtx.globalCompositeOperation = 'multiply';
       tempCtx.fillStyle = wigColor;
       tempCtx.fillRect(0, 0, wigWidth, wigHeight);
       
-      // Restore alpha channel
       tempCtx.globalCompositeOperation = 'destination-in';
       tempCtx.drawImage(this.wigImage, 0, 0, wigWidth, wigHeight);
       
-      // Draw tinted wig behind face
       this.ctx.drawImage(tempCanvas, wigX, wigY);
     } else {
-      // Draw wig behind face (destination-over)
       this.ctx.drawImage(this.wigImage, wigX, wigY, wigWidth, wigHeight);
     }
     
@@ -870,8 +851,7 @@ export class Simple2DAREngine {
 
   /**
    * Draw wig using bounding box (fallback method)
-   * Used when MediaPipe landmarks are not available
-   * Draws wig on top of face with proper layering
+   * OPTIMIZED: Uses detected face position when MediaPipe is unavailable
    */
   private drawWigWithBoundingBox(
     face: FaceDetection,
@@ -883,32 +863,23 @@ export class Simple2DAREngine {
   ): void {
     if (!this.wigImage) return;
 
-    // Auto-calculate optimal scale based on head width
-    const headWidthRatio = face.width / this.canvasElement.width;
-    const autoScaleAdjustment = this.calculateAutoScale(headWidthRatio);
-    const finalScale = scale * autoScaleAdjustment;
+    const width = this.canvasElement.width;
+    const height = this.canvasElement.height;
 
-    // Calculate wig position and size with auto-scaling
-    const wigWidth = face.width * finalScale;
+    // Use detected face width as base for wig sizing
+    const faceWidth = face.width;
+    
+    // Calculate wig dimensions based on face width and scale
+    const wigWidth = faceWidth * scale;
     const wigHeight = (this.wigImage.height / this.wigImage.width) * wigWidth;
     
-    // INTELLIGENT POSITIONING: Use detected wig hairline for perfect fit
-    const wigX = face.x + (face.width - wigWidth) / 2 + (face.width * offsetX);
+    // Position wig centered on face horizontally
+    const faceCenterX = face.x + face.width / 2;
+    const wigX = faceCenterX - wigWidth / 2 + (width * offsetX);
     
-    // If we have wig analysis, use the detected hairline position
-    let wigY: number;
-    if (this.wigAnalysis) {
-      // The wig's hairline (detected in the image) should align with the face's hairline
-      const wigHairlineOffset = this.wigAnalysis.hairlineY * wigHeight;
-      const faceHairlineY = face.y;
-      
-      // Position wig so its hairline aligns with face hairline
-      wigY = faceHairlineY - wigHairlineOffset + (wigHeight * offsetY);
-    } else {
-      // Fallback: assume hairline is 20% from bottom of wig
-      const wigBottomEdge = face.y + (wigHeight * 0.2) + (wigHeight * offsetY);
-      wigY = wigBottomEdge - wigHeight;
-    }
+    // Position wig at hairline (top of detected face)
+    // Subtract wig height so bottom edge aligns with hairline
+    const wigY = face.y - wigHeight + (height * offsetY);
 
     // Save context state
     this.ctx.save();
@@ -916,34 +887,27 @@ export class Simple2DAREngine {
     // Set transparency
     this.ctx.globalAlpha = opacity;
     
-    // Use 'source-over' (default) to draw wig ON TOP of face
-    // This ensures wig is visible and layers properly
+    // Draw wig on top
     this.ctx.globalCompositeOperation = 'source-over';
     
     // Apply color tint if specified
     if (wigColor) {
-      // Create temporary canvas for color tinting
       const tempCanvas = document.createElement('canvas');
       tempCanvas.width = wigWidth;
       tempCanvas.height = wigHeight;
       const tempCtx = tempCanvas.getContext('2d')!;
       
-      // Draw wig on temp canvas
       tempCtx.drawImage(this.wigImage, 0, 0, wigWidth, wigHeight);
       
-      // Apply color tint
       tempCtx.globalCompositeOperation = 'multiply';
       tempCtx.fillStyle = wigColor;
       tempCtx.fillRect(0, 0, wigWidth, wigHeight);
       
-      // Restore alpha channel
       tempCtx.globalCompositeOperation = 'destination-in';
       tempCtx.drawImage(this.wigImage, 0, 0, wigWidth, wigHeight);
       
-      // Draw tinted wig behind face
       this.ctx.drawImage(tempCanvas, wigX, wigY);
     } else {
-      // Draw wig behind face (destination-over)
       this.ctx.drawImage(this.wigImage, wigX, wigY, wigWidth, wigHeight);
     }
     
@@ -952,31 +916,9 @@ export class Simple2DAREngine {
   }
 
   /**
-   * Calculate automatic scale adjustment based on head size
-   * Ensures wig ALWAYS fits the head perfectly regardless of size or distance
-   * More aggressive scaling for perfect fit
+   * REMOVED - Auto-scale was causing unpredictable behavior
+   * Now using simple direct scaling controlled by user
    */
-  private calculateAutoScale(faceWidthRatio: number): number {
-    // faceWidthRatio: 0.0 to 1.0 (percentage of canvas width)
-    
-    // Target: wig should always match head width perfectly
-    // Optimal face width ratio is around 0.5-0.7 (50-70% of canvas)
-    const optimalRatio = 0.6;
-    
-    // More aggressive scaling to ensure wig always fits head
-    if (faceWidthRatio < optimalRatio) {
-      // Face is small (far from camera) - increase wig size aggressively
-      const adjustment = 1 + (optimalRatio - faceWidthRatio) * 1.2;
-      return Math.min(adjustment, 2.0); // Allow up to 2x for very small/distant heads
-    } else if (faceWidthRatio > optimalRatio) {
-      // Face is large (close to camera) - decrease wig size to fit
-      const adjustment = 1 - (faceWidthRatio - optimalRatio) * 0.6;
-      return Math.max(adjustment, 0.5); // Allow down to 0.5x for very large/close heads
-    }
-    
-    // Face is optimal size - no adjustment needed
-    return 1.0;
-  }
 
   updateConfig(config: Partial<ARConfig>): void {
     this.config = { ...this.config, ...config };
