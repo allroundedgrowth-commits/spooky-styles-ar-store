@@ -3,7 +3,7 @@
  * Tests the entire guest checkout process
  */
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = 'http://localhost:3000/api';
 
 async function testCompletePurchaseFlow() {
   console.log('🧪 Starting Complete Purchase Flow Test\n');

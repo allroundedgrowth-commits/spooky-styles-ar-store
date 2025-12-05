@@ -1,0 +1,20 @@
+{
+  "enabled": true,
+  "name": "AR Engine Test Runner",
+  "description": "Automatically runs AR engine tests when engine files are modified to catch regressions immediately",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "frontend/src/engine/*.ts",
+      "frontend/src/hooks/useAREngine.ts",
+      "frontend/src/hooks/useSimple2DAR.ts",
+      "frontend/src/hooks/useFaceTracking.ts",
+      "frontend/src/hooks/useHairFlattening.ts"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "An AR engine file has been modified. Please:\n\n1. Run the relevant test suite for the modified file\n2. Check for any test failures or warnings\n3. Verify performance targets are still met (60 FPS for AR, <300ms for hair flattening)\n4. Look for any TypeScript errors or type issues\n5. Suggest any additional tests that should be added\n\nProvide a summary of test results and any issues found."
+  }
+}

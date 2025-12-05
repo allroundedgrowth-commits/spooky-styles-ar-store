@@ -1,7 +1,7 @@
 // Quick test to verify Paystack integration
 const axios = require('axios');
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = 'http://localhost:3000/api';
 
 // Test Paystack keys are loaded
 console.log('🧪 Testing Paystack Integration\n');
@@ -10,7 +10,7 @@ console.log('🧪 Testing Paystack Integration\n');
 async function testPaystackConfig() {
   try {
     console.log('1. Checking backend health...');
-    const health = await axios.get('http://localhost:5000/health');
+    const health = await axios.get('http://localhost:3000/health');
     console.log('✅ Backend is running\n');
 
     console.log('2. Testing Paystack configuration...');

@@ -5,6 +5,12 @@ export interface User {
   is_admin: boolean;
   created_at: Date;
   updated_at: Date;
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  country?: string;
 }
 
 export interface RegisterRequest {

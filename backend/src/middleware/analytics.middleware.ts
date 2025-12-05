@@ -29,7 +29,7 @@ export const trackPerformance = (req: Request, res: Response, next: NextFunction
 };
 
 // Track errors
-export const trackErrors = (err: any, req: Request, res: Response, next: NextFunction) => {
+export const trackErrors = (err: any, req: Request, _res: Response, next: NextFunction) => {
   const userId = (req as any).user?.userId;
   
   analyticsService.logError({
@@ -53,6 +53,8 @@ export const trackErrors = (err: any, req: Request, res: Response, next: NextFun
 };
 
 // Extract device info from user agent
+// Utility functions for analytics (currently unused but kept for future use)
+/*
 function getDeviceType(userAgent: string): string {
   if (/mobile/i.test(userAgent)) return 'mobile';
   if (/tablet/i.test(userAgent)) return 'tablet';
@@ -66,3 +68,4 @@ function getBrowser(userAgent: string): string {
   if (/edge/i.test(userAgent)) return 'Edge';
   return 'Other';
 }
+*/

@@ -1,7 +1,7 @@
 import { S3Client, PutObjectCommand, ListBucketsCommand } from '@aws-sdk/client-s3';
 import { awsConfig } from './config/aws.js';
-import fs from 'fs';
-import path from 'path';
+// import fs from 'fs';
+// import path from 'path';
 
 async function testS3Upload() {
   console.log('🎃 Testing S3 Upload\n');

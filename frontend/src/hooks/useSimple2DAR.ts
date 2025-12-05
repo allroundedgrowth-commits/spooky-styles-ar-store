@@ -22,23 +22,37 @@ export const useSimple2DAR = () => {
   }, []);
 
   const initialize = async () => {
+    console.log('🎬 [useSimple2DAR] Starting initialization...');
+    
     if (!videoRef.current || !canvasRef.current) {
-      setError('Video or canvas element not found');
+      const errorMsg = 'Video or canvas element not found';
+      console.error('❌ [useSimple2DAR]', errorMsg);
+      setError(errorMsg);
       return;
     }
 
+    console.log('✅ [useSimple2DAR] Video and canvas refs found');
     setIsLoading(true);
     setError(null);
 
     try {
+      console.log('🔧 [useSimple2DAR] Creating engine instance...');
       const engine = new Simple2DAREngine(videoRef.current, canvasRef.current);
+      
+      console.log('📹 [useSimple2DAR] Initializing camera...');
       await engine.initialize();
+      
       engineRef.current = engine;
       setIsInitialized(true);
       setCameraPermission('granted');
       setIsUsingMediaPipe(engine.isUsingMediaPipe());
+      
+      console.log('✅ [useSimple2DAR] Initialization complete!', {
+        usingMediaPipe: engine.isUsingMediaPipe(),
+        canvasSize: `${canvasRef.current.width}x${canvasRef.current.height}`
+      });
     } catch (err: any) {
-      console.error('Failed to initialize AR:', err);
+      console.error('❌ [useSimple2DAR] Failed to initialize AR:', err);
       setError(err.message || 'Failed to access camera');
       setCameraPermission('denied');
     } finally {
@@ -47,15 +61,25 @@ export const useSimple2DAR = () => {
   };
 
   const loadWig = async (config: ARConfig) => {
+    console.log('🎭 [useSimple2DAR] Loading wig...', config);
+    
     if (!engineRef.current) {
-      throw new Error('Engine not initialized');
+      const errorMsg = 'Engine not initialized';
+      console.error('❌ [useSimple2DAR]', errorMsg);
+      throw new Error(errorMsg);
     }
 
     setIsLoading(true);
     try {
+      console.log('📦 [useSimple2DAR] Loading wig image:', config.wigImageUrl);
       await engineRef.current.loadWig(config);
+      
+      console.log('🎬 [useSimple2DAR] Starting rendering loop...');
       engineRef.current.startRendering();
+      
+      console.log('✅ [useSimple2DAR] Wig loaded and rendering started!');
     } catch (err: any) {
+      console.error('❌ [useSimple2DAR] Failed to load wig:', err);
       setError(err.message || 'Failed to load wig');
       throw err;
     } finally {

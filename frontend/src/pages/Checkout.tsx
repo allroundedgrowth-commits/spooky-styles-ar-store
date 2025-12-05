@@ -6,13 +6,18 @@ import { useCartStore } from '../store/cartStore';
 import { useUserStore } from '../store/userStore';
 import { paymentService } from '../services/payment.service';
 import { productService } from '../services/product.service';
+import { userService } from '../services/user.service';
 import { Product } from '../types/product';
 import RegistrationIncentiveBanner from '../components/Checkout/RegistrationIncentiveBanner';
 
 // Load Stripe
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
 
-const CheckoutForm: React.FC<{ clientSecret: string; onValidate: () => boolean }> = ({ onValidate }) => {
+const CheckoutForm: React.FC<{ 
+  clientSecret: string; 
+  onValidate: () => boolean;
+  onSaveAddress?: () => Promise<void>;
+}> = ({ onValidate, onSaveAddress }) => {
   const stripe = useStripe();
   const elements = useElements();
   const navigate = useNavigate();
@@ -36,6 +41,16 @@ const CheckoutForm: React.FC<{ clientSecret: string; onValidate: () => boolean }
     setProcessing(true);
     setErrorMessage(null);
 
+    // Save address if user opted in
+    if (onSaveAddress) {
+      try {
+        await onSaveAddress();
+      } catch (err) {
+        console.error('Failed to save address:', err);
+        // Continue with payment even if address save fails
+      }
+    }
+
     try {
       const { error, paymentIntent } = await stripe.confirmPayment({
         elements,
@@ -49,9 +64,29 @@ const CheckoutForm: React.FC<{ clientSecret: string; onValidate: () => boolean }
         setErrorMessage(error.message || 'Payment failed');
         setProcessing(false);
       } else if (paymentIntent && paymentIntent.status === 'succeeded') {
-        // Payment successful - navigate to confirmation page
-        // The confirmation page will poll for the order to be created by webhook
-        navigate(`/order-confirmation?payment_intent=${paymentIntent.id}`);
+        // Payment successful - create order via API (for local dev without webhooks)
+        try {
+          const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/payments/complete`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ paymentIntentId: paymentIntent.id }),
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to create order');
+          }
+
+          const result = await response.json();
+          
+          // Navigate to confirmation page with order ID
+          navigate(`/order-confirmation?payment_intent=${paymentIntent.id}&order_id=${result.data.id}`);
+        } catch (err: any) {
+          console.error('Error creating order:', err);
+          // Still navigate to confirmation page - it will retry fetching the order
+          navigate(`/order-confirmation?payment_intent=${paymentIntent.id}`);
+        }
       }
     } catch (err: any) {
       setErrorMessage(err.message || 'An unexpected error occurred');
@@ -61,6 +96,17 @@ const CheckoutForm: React.FC<{ clientSecret: string; onValidate: () => boolean }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Test Card Information Banner */}
+      <div className="bg-halloween-purple/20 border border-halloween-purple rounded-lg p-4">
+        <p className="text-sm font-semibold text-halloween-orange mb-2">🎃 Test Payment Details for Assessors:</p>
+        <div className="space-y-1 text-xs text-gray-300">
+          <p>Card Number: <span className="text-white font-mono">4242 4242 4242 4242</span></p>
+          <p>Expiry: <span className="text-white font-mono">Any future date (e.g., 12/25)</span></p>
+          <p>CVC: <span className="text-white font-mono">Any 3 digits (e.g., 123)</span></p>
+          <p>ZIP: <span className="text-white font-mono">Any 5 digits (e.g., 12345)</span></p>
+        </div>
+      </div>
+      
       <div className="bg-halloween-darkPurple rounded-lg p-6">
         <h3 className="text-xl font-bold text-white mb-4">Payment Information</h3>
         <PaymentElement />
@@ -96,6 +142,7 @@ const Checkout: React.FC = () => {
   const [guestInfo, setGuestInfo] = useState({
     email: '',
     name: '',
+    phone: '',
     address: '',
     city: '',
     state: '',
@@ -103,6 +150,8 @@ const Checkout: React.FC = () => {
     country: 'US',
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [saveAddress, setSaveAddress] = useState(false);
+  const [savingAddress, setSavingAddress] = useState(false);
 
   const validateGuestForm = (): boolean => {
     const errors: Record<string, string> = {};
@@ -144,6 +193,26 @@ const Checkout: React.FC = () => {
           return;
         }
 
+        // Load saved address for authenticated users
+        if (isAuthenticated) {
+          try {
+            const profile = await userService.getProfile();
+            setGuestInfo({
+              email: profile.email,
+              name: profile.name,
+              phone: profile.phone || '',
+              address: profile.address || '',
+              city: profile.city || '',
+              state: profile.state || '',
+              zipCode: profile.zipCode || '',
+              country: profile.country || 'US',
+            });
+          } catch (err) {
+            console.error('Failed to load user profile:', err);
+            // Continue with empty form if profile loading fails
+          }
+        }
+
         // Load product details
         const productMap = new Map<string, Product>();
         const uniqueProductIds = [...new Set(cart.items.map(item => item.productId))];
@@ -181,7 +250,7 @@ const Checkout: React.FC = () => {
     };
 
     initializeCheckout();
-  }, [cart, fetchCart, navigate]);
+  }, [cart, fetchCart, navigate, isAuthenticated]);
 
   if (loading) {
     return (
@@ -349,6 +418,19 @@ const Checkout: React.FC = () => {
                   <p className="text-red-400 text-sm mt-1">{formErrors.name}</p>
                 )}
               </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Phone Number (Optional)
+                </label>
+                <input
+                  type="tel"
+                  value={guestInfo.phone || ''}
+                  onChange={(e) => setGuestInfo({ ...guestInfo, phone: e.target.value })}
+                  className="w-full px-4 py-2 bg-halloween-black border border-halloween-purple rounded-lg text-white focus:outline-none focus:border-halloween-orange"
+                  placeholder="(555) 123-4567"
+                />
+              </div>
               
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -414,6 +496,22 @@ const Checkout: React.FC = () => {
                 )}
               </div>
             </div>
+
+            {/* Save Address Checkbox for Authenticated Users */}
+            {isAuthenticated && (
+              <div className="mt-4 flex items-center">
+                <input
+                  type="checkbox"
+                  id="saveAddress"
+                  checked={saveAddress}
+                  onChange={(e) => setSaveAddress(e.target.checked)}
+                  className="w-4 h-4 text-halloween-orange bg-halloween-black border-halloween-purple rounded focus:ring-halloween-orange focus:ring-2"
+                />
+                <label htmlFor="saveAddress" className="ml-2 text-sm text-gray-300">
+                  Save this address for future orders
+                </label>
+              </div>
+            )}
           </div>
 
           {/* Payment Form */}
@@ -435,7 +533,25 @@ const Checkout: React.FC = () => {
                 },
               }}
             >
-              <CheckoutForm clientSecret={clientSecret} onValidate={validateGuestForm} />
+              <CheckoutForm 
+                clientSecret={clientSecret} 
+                onValidate={validateGuestForm}
+                onSaveAddress={isAuthenticated && saveAddress ? async () => {
+                  setSavingAddress(true);
+                  try {
+                    await userService.updateAddress({
+                      phone: guestInfo.phone,
+                      address: guestInfo.address,
+                      city: guestInfo.city,
+                      state: guestInfo.state,
+                      zipCode: guestInfo.zipCode,
+                      country: guestInfo.country,
+                    });
+                  } finally {
+                    setSavingAddress(false);
+                  }
+                } : undefined}
+              />
             </Elements>
           )}
 

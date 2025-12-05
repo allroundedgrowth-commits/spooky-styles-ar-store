@@ -1,7 +1,7 @@
 // Diagnostic script for product deletion issue
 // Run with: node diagnose-delete-issue.js
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = 'http://localhost:3000/api';
 
 async function diagnose() {
   console.log('🔍 Diagnosing Product Delete Issue\n');

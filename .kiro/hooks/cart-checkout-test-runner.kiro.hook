@@ -1,0 +1,21 @@
+{
+  "enabled": true,
+  "name": "Cart & Checkout Test Runner",
+  "description": "Runs cart and checkout tests when related files are modified to ensure e-commerce flow works",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "backend/src/services/cart.service.ts",
+      "backend/src/services/order.service.ts",
+      "backend/src/services/payment.service.ts",
+      "frontend/src/store/cartStore.ts",
+      "frontend/src/pages/Cart.tsx",
+      "frontend/src/pages/Checkout.tsx"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Cart or checkout code has been modified. Please verify the e-commerce flow:\n\n1. Run cart tests: npm run test:cart --workspace=backend\n2. Run payment tests: npm run test:payment --workspace=backend\n3. Run order tests: npm run test:order --workspace=backend\n4. Check for any breaking changes in:\n   - Add to cart functionality\n   - Cart total calculations\n   - Guest checkout flow\n   - Payment processing\n   - Order creation\n\n5. Verify Stripe test cards still work\n\nProvide a summary of test results and any issues found."
+  }
+}

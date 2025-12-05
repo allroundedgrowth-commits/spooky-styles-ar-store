@@ -41,7 +41,7 @@ router.use(csrfProtection);
 // Get user's order history
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const userId = req.user!.id;
+    const userId = (req as any).user!.id;
     const orders = await orderService.getOrdersByUserId(userId);
     res.json({
       success: true,
@@ -56,7 +56,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 // Get specific order details
 router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const userId = req.user!.id;
+    const userId = (req as any).user!.id;
     const { id } = req.params;
     
     const order = await orderService.getOrderById(id, userId);

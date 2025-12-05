@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useCartStore } from '../../store/cartStore';
 import { useUserStore } from '../../store/userStore';
-import RealtimeStatus from '../Common/RealtimeStatus';
 
 const Header: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -46,7 +45,6 @@ const Header: React.FC = () => {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-6">
-            <RealtimeStatus position="header" showDetails={true} />
             <Link
               to="/"
               className="text-white hover:text-halloween-orange transition-colors"

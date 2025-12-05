@@ -13,7 +13,7 @@ import { useHairFlattening } from '../hooks/useHairFlattening';
 import { AdjustmentMode } from '../engine/Simple2DAREngine';
 import { AdjustmentModeToggle } from '../components/AR/AdjustmentModeToggle';
 import { VolumeScoreIndicator } from '../components/AR/VolumeScoreIndicator';
-import { ComparisonView } from '../components/AR/ComparisonView';
+// import { ComparisonView } from '../components/AR/ComparisonView';
 import { HairAdjustmentMessage } from '../components/AR/HairAdjustmentMessage';
 
 /**
@@ -161,7 +161,7 @@ export const ComponentIntegrationExample: React.FC = () => {
           <div className="absolute top-4 right-4">
             <VolumeScoreIndicator
               score={volumeScore}
-              category={volumeCategory ?? 'minimal'}
+              category={(volumeCategory ?? 'minimal') as 'minimal' | 'low' | 'medium' | 'high' | 'very-high'}
             />
           </div>
         )}

@@ -1,23 +1,38 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import cartService from '../services/cart.service.js';
-import { authenticateToken } from '../middleware/auth.middleware.js';
-import { csrfProtection } from '../middleware/csrf.middleware.js';
+import authService from '../services/auth.service.js';
+// import { csrfProtection } from '../middleware/csrf.middleware.js';
 
 const router = Router();
 
 // Optional authentication - allows both guest and authenticated users
-const optionalAuth = (req: Request, res: Response, next: NextFunction) => {
-  const token = req.headers.authorization?.split(' ')[1];
-  if (token) {
-    // If token exists, try to authenticate
-    authenticateToken(req, res, (err) => {
-      // Continue even if auth fails - user will be treated as guest
-      next();
-    });
-  } else {
-    // No token - continue as guest
-    next();
+const optionalAuth = async (req: Request, _res: Response, next: NextFunction) => {
+  const authHeader = req.headers.authorization;
+  
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7);
+    
+    try {
+      // Check if token is blacklisted
+      const isBlacklisted = await authService.isTokenBlacklisted(token);
+      if (!isBlacklisted) {
+        // Verify token
+        const payload = authService.verifyToken(token);
+        
+        // Attach user info to request
+        (req as any).user = {
+          id: payload.userId,
+          email: payload.email,
+        };
+      }
+    } catch (error) {
+      // Token is invalid, but continue as guest
+      console.log('Invalid token, continuing as guest');
+    }
   }
+  
+  // Continue regardless of authentication status
+  next();
 };
 
 router.use(optionalAuth);
@@ -30,7 +45,7 @@ router.use(optionalAuth);
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     // Use user ID if authenticated, otherwise use session ID for guest
-    const cartId = req.user?.id || 'guest';
+    const cartId = (req as any).user?.id || 'guest';
     const cart = await cartService.getCart(cartId);
     res.json({ success: true, data: cart });
   } catch (error) {
@@ -41,7 +56,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 // Add item to cart
 router.post('/items', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const cartId = req.user?.id || 'guest';
+    const cartId = (req as any).user?.id || 'guest';
     const { productId, quantity, customizations } = req.body;
 
     const cart = await cartService.addItem(
@@ -60,7 +75,7 @@ router.post('/items', async (req: Request, res: Response, next: NextFunction) =>
 // Update cart item quantity
 router.put('/items/:productId', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const cartId = req.user?.id || 'guest';
+    const cartId = (req as any).user?.id || 'guest';
     const { productId } = req.params;
     const { quantity, customizations } = req.body;
 
@@ -80,7 +95,7 @@ router.put('/items/:productId', async (req: Request, res: Response, next: NextFu
 // Remove item from cart
 router.delete('/items/:productId', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const cartId = req.user?.id || 'guest';
+    const cartId = (req as any).user?.id || 'guest';
     const { productId } = req.params;
     const { customizations } = req.body;
 
@@ -99,7 +114,7 @@ router.delete('/items/:productId', async (req: Request, res: Response, next: Nex
 // Clear cart
 router.delete('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const cartId = req.user?.id || 'guest';
+    const cartId = (req as any).user?.id || 'guest';
     await cartService.clearCart(cartId);
     res.status(204).send();
   } catch (error) {
@@ -110,7 +125,7 @@ router.delete('/', async (req: Request, res: Response, next: NextFunction) => {
 // Get cart total
 router.get('/total', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const cartId = req.user?.id || 'guest';
+    const cartId = (req as any).user?.id || 'guest';
     const total = await cartService.getCartTotal(cartId);
     res.json({ total });
   } catch (error) {

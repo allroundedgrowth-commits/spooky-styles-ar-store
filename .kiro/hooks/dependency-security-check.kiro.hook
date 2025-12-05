@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "name": "Dependency Security Check",
+  "description": "Checks for security vulnerabilities when package.json files are modified",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "package.json",
+      "frontend/package.json",
+      "backend/package.json",
+      "package-lock.json"
+    ]
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "npm audit --audit-level=moderate"
+  }
+}

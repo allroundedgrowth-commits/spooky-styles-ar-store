@@ -9,6 +9,7 @@ const ARTryOn: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [product, setProduct] = useState<Product | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
   const [selectedColor, setSelectedColor] = useState<string>('');
   const [scale, setScale] = useState(1.5);
   const [offsetY, setOffsetY] = useState(-0.3);
@@ -33,7 +34,16 @@ const ARTryOn: React.FC = () => {
 
   useEffect(() => {
     const fetchProduct = async () => {
-      if (!id) return;
+      if (!id) {
+        // Load all products for selection
+        try {
+          const data = await productService.getProducts();
+          setProducts(data);
+        } catch (err) {
+          console.error('Failed to load products:', err);
+        }
+        return;
+      }
       try {
         const data = await productService.getProductById(id);
         setProduct(data);
@@ -147,6 +157,58 @@ const ARTryOn: React.FC = () => {
       navigate('/cart');
     }
   };
+
+  // Show product selector if no ID provided
+  if (!id) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-purple-900 to-black text-white">
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex items-center justify-between mb-6">
+            <button
+              onClick={() => navigate(-1)}
+              className="flex items-center gap-2 text-purple-300 hover:text-white transition"
+            >
+              <span>←</span> Back
+            </button>
+            <h1 className="text-2xl font-bold">Select a Wig to Try On</h1>
+            <div className="w-20"></div>
+          </div>
+
+          {products.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="text-6xl mb-4">🎭</div>
+              <p className="text-xl text-gray-300">Loading wigs...</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {products.map((prod) => (
+                <div
+                  key={prod.id}
+                  onClick={() => navigate(`/ar-tryon/${prod.id}`)}
+                  className="bg-purple-900/30 rounded-lg overflow-hidden cursor-pointer hover:bg-purple-900/50 transition group"
+                >
+                  <div className="aspect-square bg-black/50 flex items-center justify-center overflow-hidden">
+                    <img
+                      src={prod.thumbnail_url || prod.image_url || '/placeholder-wig.png'}
+                      alt={prod.name}
+                      className="w-full h-full object-cover group-hover:scale-110 transition"
+                    />
+                  </div>
+                  <div className="p-4">
+                    <h3 className="font-semibold text-lg mb-1">{prod.name}</h3>
+                    <p className="text-purple-300 font-bold">${prod.price.toFixed(2)}</p>
+                    <button className="mt-3 w-full bg-purple-600 hover:bg-purple-700 py-2 rounded-lg font-semibold transition">
+                      Try This On
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   if (!product) {
     return (

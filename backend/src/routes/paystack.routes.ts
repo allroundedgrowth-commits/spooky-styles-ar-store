@@ -23,7 +23,7 @@ router.post('/initialize', authenticate, async (req: Request, res: Response) => 
     // Get order details
     const orderResult = await pool.query(
       'SELECT * FROM orders WHERE id = $1 AND user_id = $2',
-      [orderId, req.user?.id]
+      [orderId, (req as any).user?.id]
     );
 
     if (orderResult.rows.length === 0) {
@@ -45,7 +45,7 @@ router.post('/initialize', authenticate, async (req: Request, res: Response) => 
       reference,
       metadata: {
         orderId,
-        userId: req.user?.id,
+        userId: (req as any).user?.id,
         orderNumber: order.order_number,
       },
     });

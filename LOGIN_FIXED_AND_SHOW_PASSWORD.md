@@ -318,7 +318,7 @@ Status: 200 OK
 # Test login endpoint
 curl -X POST http://localhost:5000/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@spookywigs.com","password":"SpookyAdmin2024!"}'
+  -d '{"email":"admin@spookystyles.com","password":"Admin123!"}'
 
 # Should return:
 {

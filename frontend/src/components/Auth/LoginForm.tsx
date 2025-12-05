@@ -68,6 +68,23 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onSwitchToRegister }) 
     <div className="bg-halloween-dark p-8 rounded-lg shadow-lg border border-halloween-purple/30">
       <h2 className="text-3xl font-bold text-halloween-orange mb-6">Login</h2>
       
+      {/* Test Credentials Banner */}
+      <div className="mb-6 p-4 bg-halloween-purple/20 border border-halloween-purple rounded-lg">
+        <p className="text-sm font-semibold text-halloween-orange mb-2">🎃 Test Accounts for Assessors:</p>
+        <div className="space-y-2 text-xs text-gray-300">
+          <div className="bg-halloween-black/50 p-2 rounded">
+            <p className="font-medium text-halloween-green">Admin Account:</p>
+            <p>Email: <span className="text-white font-mono">admin@spookystyles.com</span></p>
+            <p>Password: <span className="text-white font-mono">Admin123!</span></p>
+          </div>
+          <div className="bg-halloween-black/50 p-2 rounded">
+            <p className="font-medium text-halloween-green">Regular User:</p>
+            <p>Email: <span className="text-white font-mono">user@example.com</span></p>
+            <p>Password: <span className="text-white font-mono">User123!</span></p>
+          </div>
+        </div>
+      </div>
+      
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">

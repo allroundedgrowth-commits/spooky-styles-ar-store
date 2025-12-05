@@ -15,10 +15,10 @@ export const Simple2DARTryOn: React.FC = () => {
   const navigate = useNavigate();
   const [product, setProduct] = useState<Product | null>(null);
   const [selectedColor, setSelectedColor] = useState<string>('');
-  const [scale, setScale] = useState(1.5);
-  const [offsetY, setOffsetY] = useState(0.2);
+  const [scale, setScale] = useState(0.8);  // Smaller default - easier to see
+  const [offsetY, setOffsetY] = useState(-0.3);  // Higher up - on top of head
   const [offsetX, setOffsetX] = useState(0);
-  const [opacity, setOpacity] = useState(0.85);
+  const [opacity, setOpacity] = useState(0.9);  // More visible
   const [useUploadedImage, setUseUploadedImage] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
@@ -157,7 +157,7 @@ export const Simple2DARTryOn: React.FC = () => {
         offsetY,
         offsetX,
         opacity,
-        enableHairFlattening: true, // Enable smart hair adjustment
+        enableHairFlattening: false, // DISABLED - causing performance issues
       });
     }
   }, [isInitialized, product, selectedColor, scale, offsetY, offsetX, opacity]);
@@ -179,9 +179,10 @@ export const Simple2DARTryOn: React.FC = () => {
     }
   }, [hairProcessingState]);
 
-  // Handle mouse/touch drag for wig positioning
+  // Handle mouse/touch drag for wig positioning - IMPROVED
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isInitialized) return;
+    e.preventDefault(); // Prevent text selection while dragging
     setIsDragging(true);
     const rect = canvasRef.current?.getBoundingClientRect();
     if (rect) {
@@ -194,17 +195,21 @@ export const Simple2DARTryOn: React.FC = () => {
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isDragging || !canvasRef.current) return;
+    e.preventDefault();
     
     const rect = canvasRef.current.getBoundingClientRect();
     const currentX = e.clientX - rect.left;
     const currentY = e.clientY - rect.top;
     
+    // Calculate delta as percentage of canvas size
     const deltaX = (currentX - dragStart.x) / rect.width;
     const deltaY = (currentY - dragStart.y) / rect.height;
     
+    // Update offsets - this moves the wig
     setOffsetX(prev => prev + deltaX);
     setOffsetY(prev => prev + deltaY);
     
+    // Update drag start for next move
     setDragStart({ x: currentX, y: currentY });
   };
 
@@ -214,6 +219,7 @@ export const Simple2DARTryOn: React.FC = () => {
 
   const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
     if (!isInitialized || e.touches.length === 0) return;
+    e.preventDefault(); // Prevent scrolling while dragging
     setIsDragging(true);
     const rect = canvasRef.current?.getBoundingClientRect();
     if (rect) {
@@ -226,17 +232,21 @@ export const Simple2DARTryOn: React.FC = () => {
 
   const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
     if (!isDragging || !canvasRef.current || e.touches.length === 0) return;
+    e.preventDefault(); // Prevent scrolling
     
     const rect = canvasRef.current.getBoundingClientRect();
     const currentX = e.touches[0].clientX - rect.left;
     const currentY = e.touches[0].clientY - rect.top;
     
+    // Calculate delta as percentage of canvas size
     const deltaX = (currentX - dragStart.x) / rect.width;
     const deltaY = (currentY - dragStart.y) / rect.height;
     
+    // Update offsets - this moves the wig
     setOffsetX(prev => prev + deltaX);
     setOffsetY(prev => prev + deltaY);
     
+    // Update drag start for next move
     setDragStart({ x: currentX, y: currentY });
   };
 
@@ -270,22 +280,21 @@ export const Simple2DARTryOn: React.FC = () => {
   };
 
   const handleAutoFit = () => {
-    // Auto-fit positions wig ONLY on top of head
-    // Face remains completely visible
-    setScale(1.2);    // Smaller - just covers top of head
-    setOffsetY(-0.7); // Much higher - only top of head
+    // Auto-fit positions wig on top of head
+    setScale(0.8);
+    setOffsetY(-0.3);
     setOffsetX(0);
-    setOpacity(0.7);  // More transparent to see through
-    updateConfig({ scale: 1.2, offsetY: -0.7, offsetX: 0, opacity: 0.7 });
+    setOpacity(0.9);
+    updateConfig({ scale: 0.8, offsetY: -0.3, offsetX: 0, opacity: 0.9 });
   };
 
   const handleResetPosition = () => {
-    // Reset to minimal coverage - face fully visible
-    setScale(1.2);
-    setOffsetY(-0.7);
+    // Reset to default position
+    setScale(0.8);
+    setOffsetY(-0.3);
     setOffsetX(0);
-    setOpacity(0.7);
-    updateConfig({ scale: 1.2, offsetY: -0.7, offsetX: 0, opacity: 0.7 });
+    setOpacity(0.9);
+    updateConfig({ scale: 0.8, offsetY: -0.3, offsetX: 0, opacity: 0.9 });
   };
 
   const handleScreenshot = () => {
@@ -408,13 +417,16 @@ export const Simple2DARTryOn: React.FC = () => {
               {/* Video and Canvas - always rendered but hidden when not initialized */}
               <video
                 ref={videoRef}
-                className={`absolute inset-0 w-full h-full object-cover ${isInitialized ? 'hidden' : 'hidden'}`}
+                className="absolute inset-0 w-full h-full object-cover"
+                style={{ display: isInitialized && !useUploadedImage ? 'none' : 'none' }}
                 playsInline
                 muted
+                autoPlay
               />
               <canvas
                 ref={canvasRef}
-                className={`absolute inset-0 w-full h-full object-cover ${isInitialized ? 'block' : 'hidden'} ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+                className={`absolute inset-0 w-full h-full object-cover ${isDragging ? 'cursor-grabbing' : 'cursor-grab'} select-none`}
+                style={{ display: isInitialized ? 'block' : 'none' }}
                 onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
@@ -675,66 +687,79 @@ export const Simple2DARTryOn: React.FC = () => {
                   </div>
                   
                   <div>
-                    <label className="block text-sm mb-2">
-                      Size: {scale.toFixed(1)}x
-                    </label>
-                    <input
-                      type="range"
-                      min="0.5"
-                      max="3"
-                      step="0.1"
-                      value={scale}
-                      onChange={(e) => handleScaleChange(parseFloat(e.target.value))}
-                      className="w-full"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm mb-2">
-                      Vertical Position: {offsetY.toFixed(2)}
-                    </label>
-                    <input
-                      type="range"
-                      min="-1"
-                      max="1"
-                      step="0.05"
-                      value={offsetY}
-                      onChange={(e) => handleOffsetYChange(parseFloat(e.target.value))}
-                      className="w-full"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm mb-2">
-                      Horizontal Position: {offsetX.toFixed(2)}
-                    </label>
-                    <input
-                      type="range"
-                      min="-1"
-                      max="1"
-                      step="0.05"
-                      value={offsetX}
-                      onChange={(e) => handleOffsetXChange(parseFloat(e.target.value))}
-                      className="w-full"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm mb-2">
-                      Wig Opacity: {Math.round(opacity * 100)}%
+                    <label className="block text-sm mb-2 font-semibold">
+                      Size: {scale.toFixed(2)}x
                     </label>
                     <input
                       type="range"
                       min="0.3"
+                      max="2"
+                      step="0.05"
+                      value={scale}
+                      onChange={(e) => handleScaleChange(parseFloat(e.target.value))}
+                      className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                    />
+                    <div className="flex justify-between text-xs text-gray-500 mt-1">
+                      <span>Smaller</span>
+                      <span>Larger</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm mb-2 font-semibold">
+                      Up/Down: {offsetY.toFixed(2)}
+                    </label>
+                    <input
+                      type="range"
+                      min="-0.8"
+                      max="0.8"
+                      step="0.02"
+                      value={offsetY}
+                      onChange={(e) => handleOffsetYChange(parseFloat(e.target.value))}
+                      className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                    />
+                    <div className="flex justify-between text-xs text-gray-500 mt-1">
+                      <span>↑ Higher</span>
+                      <span>↓ Lower</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm mb-2 font-semibold">
+                      Left/Right: {offsetX.toFixed(2)}
+                    </label>
+                    <input
+                      type="range"
+                      min="-0.5"
+                      max="0.5"
+                      step="0.02"
+                      value={offsetX}
+                      onChange={(e) => handleOffsetXChange(parseFloat(e.target.value))}
+                      className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                    />
+                    <div className="flex justify-between text-xs text-gray-500 mt-1">
+                      <span>← Left</span>
+                      <span>Right →</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm mb-2 font-semibold">
+                      Transparency: {Math.round(opacity * 100)}%
+                    </label>
+                    <input
+                      type="range"
+                      min="0.4"
                       max="1"
                       step="0.05"
                       value={opacity}
                       onChange={(e) => handleOpacityChange(parseFloat(e.target.value))}
-                      className="w-full"
+                      className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
                     />
-                    <p className="text-xs text-gray-400 mt-1">
-                      Lower opacity lets your face show through more
-                    </p>
+                    <div className="flex justify-between text-xs text-gray-500 mt-1">
+                      <span>See-through</span>
+                      <span>Solid</span>
+                    </div>
                   </div>
 
                   <div className="flex items-center justify-between pt-2 border-t border-gray-700">

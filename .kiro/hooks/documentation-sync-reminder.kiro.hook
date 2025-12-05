@@ -1,0 +1,20 @@
+{
+  "enabled": true,
+  "name": "Documentation Sync Reminder",
+  "description": "Reminds to update documentation when major feature files are modified",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "frontend/src/components/Admin/*.tsx",
+      "frontend/src/components/AR/*.tsx",
+      "frontend/src/pages/*.tsx",
+      "backend/src/routes/*.ts",
+      "backend/src/services/*.ts"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A major feature file has been modified. Please check if documentation needs updating:\n\n1. Check for related README files in the same directory\n2. Look for implementation summaries that reference this file\n3. Verify API documentation is current (if backend route/service)\n4. Check if quick start guides need updates\n5. Update any affected examples in frontend/src/examples/\n\nList any documentation files that should be updated and suggest what changes are needed."
+  }
+}

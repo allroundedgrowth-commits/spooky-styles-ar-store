@@ -5,10 +5,9 @@ dotenv.config();
 
 const { Pool } = pg;
 
-// Determine if we need SSL
-const needsSSL = process.env.DATABASE_URL?.includes('supabase') || 
-                 process.env.DATABASE_URL?.includes('pooler') ||
-                 process.env.DATABASE_URL?.includes('sslmode=require');
+// Determine if we need SSL (for cloud databases)
+const needsSSL = process.env.DATABASE_URL?.includes('sslmode=require') ||
+                 process.env.NODE_ENV === 'production';
 
 console.log('🔐 Database SSL configuration:', { needsSSL, hasUrl: !!process.env.DATABASE_URL });
 

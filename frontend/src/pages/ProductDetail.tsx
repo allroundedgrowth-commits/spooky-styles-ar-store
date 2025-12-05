@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { productService } from '../services/product.service';
 import { Product } from '../types/product';
-import { useRealtimeInventory } from '../hooks/useRealtimeInventory';
 import { useCartStore } from '../store/cartStore';
 
 const ProductDetail: React.FC = () => {
@@ -16,15 +15,6 @@ const ProductDetail: React.FC = () => {
   const [addingToCart, setAddingToCart] = useState(false);
   
   const { addItem } = useCartStore();
-
-  // Realtime inventory subscription
-  // Requirements: 2.1, 2.3, 2.5
-  const { 
-    stock: realtimeStock, 
-    isConnected, 
-    lastUpdate,
-    error: realtimeError 
-  } = useRealtimeInventory(id, product?.stock_quantity);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -52,15 +42,7 @@ const ProductDetail: React.FC = () => {
     fetchProduct();
   }, [id]);
 
-  // Update product stock when realtime update arrives
-  // Requirement 2.1: Display live stock count
-  useEffect(() => {
-    if (realtimeStock !== null && product) {
-      setProduct((prev) => 
-        prev ? { ...prev, stock_quantity: realtimeStock } : null
-      );
-    }
-  }, [realtimeStock, product]);
+
 
   if (loading) {
     return (
@@ -250,25 +232,6 @@ const ProductDetail: React.FC = () => {
                   {isOutOfStock ? 'Out of Stock' : `${product.stock_quantity} Available`}
                 </span>
               </div>
-              
-              {/* Connection Status Indicator - Requirement 2.4 */}
-              <div className="flex items-center gap-2 text-xs">
-                <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-gray-500'}`} />
-                <span className="text-gray-400">
-                  {isConnected ? 'Live updates active' : 'Connecting...'}
-                </span>
-                {lastUpdate && (
-                  <span className="text-gray-500 ml-auto">
-                    Updated {new Date(lastUpdate).toLocaleTimeString()}
-                  </span>
-                )}
-              </div>
-              
-              {realtimeError && (
-                <div className="mt-2 text-xs text-yellow-500">
-                  ⚠️ {realtimeError}
-                </div>
-              )}
             </div>
 
             {/* Action Buttons */}

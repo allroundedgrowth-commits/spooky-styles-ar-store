@@ -1,6 +1,6 @@
 // Simple test to check products
 async function testProducts() {
-  const response = await fetch('http://localhost:5000/api/products');
+  const response = await fetch('http://localhost:3000/api/products');
   const data = await response.json();
   
   console.log('Products from API:');

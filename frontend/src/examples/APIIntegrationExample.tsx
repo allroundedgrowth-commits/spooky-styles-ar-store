@@ -103,8 +103,8 @@ export const APIIntegrationExample: React.FC = () => {
   };
 
   // Example 5: Search products with debouncing
-  // @ts-ignore - Example function for documentation
-  const handleSearch = async (keyword: string) => {
+  // @ts-expect-error - Example function for documentation
+  const _handleSearch = async (keyword: string) => {
     try {
       const results = await api.products.searchProducts(keyword);
       setProducts(results);

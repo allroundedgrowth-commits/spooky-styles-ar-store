@@ -22,7 +22,7 @@ dotenv.config({ path: join(__dirname, '.env') });
 
 const { Pool } = pg;
 
-// Database connection - FORCE local PostgreSQL (ignore any Supabase env vars)
+// Database connection - local PostgreSQL
 const DATABASE_URL = 'postgresql://spooky_user:spooky_pass@localhost:5432/spooky_styles_db';
 
 console.log('Connecting to LOCAL database:', DATABASE_URL.replace(/:[^:@]+@/, ':****@'));

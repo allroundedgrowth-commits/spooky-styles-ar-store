@@ -1,7 +1,6 @@
 import pool from '../config/database.js';
 import redisClient from '../config/redis.js';
 import { NotFoundError, ValidationError } from '../utils/errors.js';
-import { supabaseAdmin } from '../config/supabase.js';
 
 export interface ProductColor {
   id: string;
@@ -21,6 +20,13 @@ export interface Product {
   theme: string;
   model_url: string;
   thumbnail_url: string;
+  image_url: string;
+  image_url_secondary?: string;
+  image_url_tertiary?: string;
+  image_alt_text?: string;
+  image_alt_text_secondary?: string;
+  image_alt_text_tertiary?: string;
+  ar_image_url: string;
   stock_quantity: number;
   is_accessory: boolean;
   created_at: Date;
@@ -45,6 +51,11 @@ export interface CreateProductInput {
   model_url?: string;
   thumbnail_url: string;
   image_url: string;
+  image_url_secondary?: string;
+  image_url_tertiary?: string;
+  image_alt_text?: string;
+  image_alt_text_secondary?: string;
+  image_alt_text_tertiary?: string;
   ar_image_url: string;
   stock_quantity?: number;
   is_accessory?: boolean;
@@ -60,6 +71,11 @@ export interface UpdateProductInput {
   model_url?: string;
   thumbnail_url?: string;
   image_url?: string;
+  image_url_secondary?: string;
+  image_url_tertiary?: string;
+  image_alt_text?: string;
+  image_alt_text_secondary?: string;
+  image_alt_text_tertiary?: string;
   ar_image_url?: string;
   stock_quantity?: number;
   is_accessory?: boolean;
@@ -260,9 +276,11 @@ class ProductService {
       const query = `
         INSERT INTO products (
           name, description, price, promotional_price, category, theme,
-          model_url, thumbnail_url, image_url, ar_image_url, stock_quantity, is_accessory
+          model_url, thumbnail_url, image_url, image_url_secondary, image_url_tertiary,
+          image_alt_text, image_alt_text_secondary, image_alt_text_tertiary,
+          ar_image_url, stock_quantity, is_accessory
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
         RETURNING *
       `;
 
@@ -276,6 +294,11 @@ class ProductService {
         input.model_url || null,
         input.thumbnail_url,
         input.image_url,
+        input.image_url_secondary || null,
+        input.image_url_tertiary || null,
+        input.image_alt_text || '',
+        input.image_alt_text_secondary || '',
+        input.image_alt_text_tertiary || '',
         input.ar_image_url,
         input.stock_quantity || 0,
         input.is_accessory || false,
@@ -366,6 +389,36 @@ class ProductService {
       if (input.ar_image_url !== undefined) {
         updates.push(`ar_image_url = $${paramCount}`);
         values.push(input.ar_image_url);
+        paramCount++;
+      }
+
+      if (input.image_url_secondary !== undefined) {
+        updates.push(`image_url_secondary = $${paramCount}`);
+        values.push(input.image_url_secondary);
+        paramCount++;
+      }
+
+      if (input.image_url_tertiary !== undefined) {
+        updates.push(`image_url_tertiary = $${paramCount}`);
+        values.push(input.image_url_tertiary);
+        paramCount++;
+      }
+
+      if (input.image_alt_text !== undefined) {
+        updates.push(`image_alt_text = $${paramCount}`);
+        values.push(input.image_alt_text);
+        paramCount++;
+      }
+
+      if (input.image_alt_text_secondary !== undefined) {
+        updates.push(`image_alt_text_secondary = $${paramCount}`);
+        values.push(input.image_alt_text_secondary);
+        paramCount++;
+      }
+
+      if (input.image_alt_text_tertiary !== undefined) {
+        updates.push(`image_alt_text_tertiary = $${paramCount}`);
+        values.push(input.image_alt_text_tertiary);
         paramCount++;
       }
 

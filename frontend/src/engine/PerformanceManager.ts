@@ -167,9 +167,9 @@ export class PerformanceManager {
    * Update memory usage metric
    */
   updateMemoryUsage(): void {
-    // @ts-ignore - performance.memory is Chrome-specific
+    // @ts-expect-error - performance.memory is Chrome-specific
     if (performance.memory) {
-      // @ts-ignore - performance.memory is Chrome-specific
+      // @ts-expect-error - performance.memory is Chrome-specific
       this.metrics.memoryUsage = performance.memory.usedJSHeapSize / (1024 * 1024); // MB
       
       // Warn if memory usage is high (> 80MB for hair flattening)

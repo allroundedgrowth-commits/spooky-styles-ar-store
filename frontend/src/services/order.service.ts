@@ -25,7 +25,8 @@ class OrderService {
   }
 
   async getOrderByPaymentIntent(paymentIntentId: string): Promise<OrderWithItems> {
-    return await api.orders.getOrderByPaymentIntent(paymentIntentId);
+    const order = await api.orders.getOrderByPaymentIntent(paymentIntentId);
+    return order as unknown as OrderWithItems;
   }
 }
 

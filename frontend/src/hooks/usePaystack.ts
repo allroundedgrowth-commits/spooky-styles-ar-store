@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../services/api';
+import { apiClient } from '../services/api';
 
 interface PaystackConfig {
   email: string;
@@ -10,11 +10,11 @@ interface PaystackConfig {
   onClose?: () => void;
 }
 
-interface PaystackResponse {
-  reference: string;
-  status: string;
-  message: string;
-}
+// interface PaystackResponse {
+//   reference: string;
+//   status: string;
+//   message: string;
+// }
 
 export const usePaystack = () => {
   const [loading, setLoading] = useState(false);
@@ -27,7 +27,7 @@ export const usePaystack = () => {
 
     try {
       // Initialize payment on backend
-      const response = await api.post('/paystack/initialize', {
+      const response = await apiClient.post('/paystack/initialize', {
         orderId: config.orderId,
         amount: config.amount,
         email: config.email,
@@ -62,7 +62,7 @@ export const usePaystack = () => {
 
   const verifyPayment = async (reference: string, config: PaystackConfig) => {
     try {
-      const response = await api.get(`/paystack/verify/${reference}`);
+      const response = await apiClient.get(`/paystack/verify/${reference}`);
       const { status } = response.data.data;
 
       if (status === 'success') {

@@ -41,7 +41,7 @@ router.get('/:id/products', async (req: Request, res: Response, next: NextFuncti
 router.post('/:id/add-to-cart', authenticate, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const userId = req.user!.id;
+    const userId = (req as any).user!.id;
 
     // Get all products for this inspiration
     const products = await inspirationService.getInspirationProducts(id);

@@ -1,30 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Product } from '../../types/product';
-import { useRealtimeInventory } from '../../hooks/useRealtimeInventory';
 
 interface ProductCardProps {
   product: Product;
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
-  // Local state for stock to update in real-time
-  const [currentStock, setCurrentStock] = useState(product.stock_quantity);
-
-  // Realtime inventory subscription
-  // Requirements: 2.1, 2.5
-  const { stock: realtimeStock } = useRealtimeInventory(
-    product.id,
-    product.stock_quantity
-  );
-
-  // Update local stock when realtime update arrives
-  // Requirement 2.1: Update stock display in real-time
-  useEffect(() => {
-    if (realtimeStock !== null) {
-      setCurrentStock(realtimeStock);
-    }
-  }, [realtimeStock]);
+  // Local state for stock
+  const [currentStock] = useState(product.stock_quantity);
 
   const isOutOfStock = currentStock === 0;
   const hasPromotion = product.promotional_price && product.promotional_price < product.price;

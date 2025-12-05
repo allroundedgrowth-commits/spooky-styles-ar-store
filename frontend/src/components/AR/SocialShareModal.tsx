@@ -41,12 +41,13 @@ export const SocialShareModal: React.FC<SocialShareModalProps> = ({
       };
 
       switch (platform) {
-        case 'native':
+        case 'native': {
           const shared = await SocialShareService.shareNative(screenshot, shareOptions);
           if (shared) {
             setShareMessage('Shared successfully! 🎉');
           }
           break;
+        }
 
         case 'facebook':
           // Download first, then open Facebook
@@ -62,7 +63,7 @@ export const SocialShareModal: React.FC<SocialShareModalProps> = ({
           setShareMessage('Screenshot downloaded! Attach it to your tweet. 🐦');
           break;
 
-        case 'instagram':
+        case 'instagram': {
           const instagramResult = SocialShareService.shareToInstagram();
           ScreenshotService.downloadScreenshot(screenshot, 'spooky-styles-tryOn.png');
           setShareMessage(instagramResult.message);
@@ -70,6 +71,7 @@ export const SocialShareModal: React.FC<SocialShareModalProps> = ({
             setTimeout(instagramResult.action, 1000);
           }
           break;
+        }
       }
     } catch (error: any) {
       console.error('Share error:', error);

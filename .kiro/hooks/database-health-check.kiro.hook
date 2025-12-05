@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "name": "Database Health Check",
+  "description": "Checks database connection and migration status when backend server files are modified",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "backend/src/index.ts",
+      "backend/src/config/database.ts"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Backend server configuration has been modified. Please verify:\n\n1. Database connection is working (run: node backend/src/db/test-connection.ts)\n2. All migrations have been applied\n3. Redis connection is active\n4. Required environment variables are set\n5. Docker containers are running (postgres, redis)\n\nProvide a health check summary and any issues that need attention."
+  }
+}

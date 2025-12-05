@@ -5,11 +5,11 @@
 
 const axios = require('axios');
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = 'http://localhost:3000/api';
 
 // Admin credentials from ADMIN_CREDENTIALS.md
-const ADMIN_EMAIL = 'admin@spookywigs.com';
-const ADMIN_PASSWORD = 'SpookyAdmin2024!';
+const ADMIN_EMAIL = 'admin@spookystyles.com';
+const ADMIN_PASSWORD = 'Admin123!';
 
 async function testDeleteFix() {
   console.log('🎃 Testing Product Delete Fix...\n');

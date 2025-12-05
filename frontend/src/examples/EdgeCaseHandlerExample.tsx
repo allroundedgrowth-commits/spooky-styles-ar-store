@@ -154,7 +154,7 @@ const EdgeCaseHandlerExample: React.FC = () => {
         result = handler.handleLowQuality(createMockImage(640, 480, 'good'));
         break;
       
-      case 'multiple-faces':
+      case 'multiple-faces': {
         const faces: BoundingBox[] = [
           { x: 100, y: 100, width: 150, height: 180 }, // Left face
           { x: 400, y: 120, width: 200, height: 240 }, // Right face (larger)
@@ -166,6 +166,8 @@ const EdgeCaseHandlerExample: React.FC = () => {
           message: `Selected face at (${primaryFace.x}, ${primaryFace.y}) with size ${primaryFace.width}x${primaryFace.height}`,
           reason: 'multiple_faces'
         };
+        break;
+      }
         
         // Visualize faces
         if (canvasRef.current) {

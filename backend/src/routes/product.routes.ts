@@ -150,6 +150,7 @@ router.post(
   '/',
   authenticate,
   requireAdmin,
+  csrfProtection,
   async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
       const product = await productService.createProduct(req.body);
@@ -173,6 +174,7 @@ router.put(
   '/:id',
   authenticate,
   requireAdmin,
+  csrfProtection,
   async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
       const product = await productService.updateProduct(req.params.id, req.body);
@@ -196,6 +198,7 @@ router.delete(
   '/:id',
   authenticate,
   requireAdmin,
+  csrfProtection,
   async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
       await productService.deleteProduct(req.params.id);
@@ -218,6 +221,7 @@ router.post(
   '/:id/colors',
   authenticate,
   requireAdmin,
+  csrfProtection,
   async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
       const { color_name, color_hex } = req.body;
@@ -250,6 +254,7 @@ router.delete(
   '/colors/:colorId',
   authenticate,
   requireAdmin,
+  csrfProtection,
   async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
       await productService.deleteProductColor(req.params.colorId);

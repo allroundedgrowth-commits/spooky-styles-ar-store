@@ -23,7 +23,7 @@ export const apiLimiter = rateLimit({
       },
     });
   },
-  skip: (req: Request) => {
+  skip: (_req: Request) => {
     // Skip rate limiting for admin users in development
     return process.env.NODE_ENV === 'development';
   },

@@ -5,7 +5,7 @@
 
 const http = require('http');
 
-const API_URL = 'http://localhost:5000';
+const API_URL = 'http://localhost:3000';
 
 console.log('🔍 Testing Products API...\n');
 

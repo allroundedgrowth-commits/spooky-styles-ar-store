@@ -13,7 +13,7 @@ import {
   HairAdjustmentPreferences,
   HairFlatteningPreferencesManager,
 } from '../utils/hairFlatteningPreferences';
-import { AdjustmentMode } from '../engine/HairFlatteningEngine';
+// import { AdjustmentMode } from '../engine/HairFlatteningEngine';
 
 export interface UseHairFlatteningPreferencesOptions {
   /**

@@ -6,8 +6,8 @@
 ```bash
 npm run dev
 # Open: http://localhost:3000/account
-# Email: admin@spookywigs.com
-# Password: SpookyAdmin2024!
+# Email: admin@spookystyles.com
+# Password: Admin123!
 ```
 
 ---

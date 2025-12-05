@@ -190,8 +190,8 @@ export class WigAnalyzer {
    */
   private calculateRecommendedScale(
     wigBounds: { top: number; bottom: number; left: number; right: number },
-    width: number,
-    height: number
+    _width: number,
+    _height: number
   ): number {
     // Calculate actual wig width as percentage of image
     const wigWidth = wigBounds.right - wigBounds.left;
@@ -212,12 +212,12 @@ export class WigAnalyzer {
    */
   private calculateRecommendedOffset(
     hairlineY: number,
-    wigBounds: { top: number; bottom: number; left: number; right: number }
+    _wigBounds: { top: number; bottom: number; left: number; right: number }
   ): number {
     // If hairline is at the bottom of the image, we need to position wig higher
     // If hairline is in the middle, we need less offset
     
-    const wigHeight = wigBounds.bottom - wigBounds.top;
+    // const wigHeight = wigBounds.bottom - wigBounds.top;
     const hairlineFromBottom = 1 - hairlineY;
     
     // Calculate offset to position hairline at forehead

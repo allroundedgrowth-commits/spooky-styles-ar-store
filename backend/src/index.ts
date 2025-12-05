@@ -19,6 +19,7 @@ import inspirationRoutes from './routes/inspiration.routes.js';
 import uploadRoutes from './routes/upload.routes.js';
 import analyticsRoutes from './routes/analytics.routes.js';
 import paystackRoutes from './routes/paystack.routes.js';
+import userRoutes from './routes/user.routes.js';
 import { errorHandler } from './middleware/error.middleware.js';
 import { apiLimiter } from './middleware/rateLimiter.middleware.js';
 import { sanitizeInput } from './middleware/sanitization.middleware.js';
@@ -84,6 +85,9 @@ app.get('/api', (_req, res) => {
 
 // Authentication routes
 app.use('/api/auth', authRoutes);
+
+// User profile routes
+app.use('/api/user', userRoutes);
 
 // Product routes
 app.use('/api/products', productRoutes);

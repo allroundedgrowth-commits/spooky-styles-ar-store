@@ -47,12 +47,20 @@ export const apiClient = axios.create({
   timeout: 30000, // 30 seconds
 });
 
-// Request interceptor to add auth token
+// Request interceptor to add auth token and CSRF token
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = localStorage.getItem('auth_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    
+    // Add CSRF token for state-changing requests
+    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(config.method?.toUpperCase() || '')) {
+      const csrfToken = localStorage.getItem('csrf_token');
+      if (csrfToken) {
+        config.headers['X-CSRF-Token'] = csrfToken;
+      }
     }
     
     // Track retry count in config metadata instead of headers
@@ -106,7 +114,7 @@ apiClient.interceptors.response.use(
 
       // Handle specific status codes
       switch (status) {
-        case 401:
+        case 401: {
           // Unauthorized - clear token but keep remembered credentials
           const rememberedEmail = localStorage.getItem('remembered_email');
           const rememberedPassword = localStorage.getItem('remembered_password');
@@ -118,6 +126,7 @@ apiClient.interceptors.response.use(
             window.location.href = '/account';
           }
           throw new APIError('Session expired. Please log in again.', 401, error);
+        }
         
         case 403:
           throw new APIError('Access denied. You do not have permission to perform this action.', 403, error);
@@ -194,5 +203,21 @@ export async function apiCall<T>(
     return response.data;
   } finally {
     loadingStateManager.setLoading(key, false);
+  }
+}
+
+// Fetch CSRF token from server
+export async function fetchCSRFToken(): Promise<string | null> {
+  try {
+    const response = await apiClient.get('/auth/csrf-token');
+    const csrfToken = response.data.csrfToken;
+    if (csrfToken) {
+      localStorage.setItem('csrf_token', csrfToken);
+      return csrfToken;
+    }
+    return null;
+  } catch (error) {
+    console.error('Failed to fetch CSRF token:', error);
+    return null;
   }
 }

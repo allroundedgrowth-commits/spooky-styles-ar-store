@@ -1,8 +1,8 @@
 import dotenv from 'dotenv';
 import { s3Service } from './services/s3.service.js';
 import { s3Config } from './config/aws.js';
-import fs from 'fs';
-import path from 'path';
+// import fs from 'fs';
+// import path from 'path';
 
 dotenv.config();
 

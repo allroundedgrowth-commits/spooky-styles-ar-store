@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AR Try-On Debug Test</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #1a0033;
+      color: white;
+      font-family: Arial, sans-serif;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    #videoElement {
+      width: 100%;
+      max-width: 400px;
+      border: 2px solid #8b5cf6;
+      display: block;
+      margin: 20px auto;
+    }
+    #canvasElement {
+      width: 100%;
+      max-width: 400px;
+      border: 2px solid #f97316;
+      display: block;
+      margin: 20px auto;
+    }
+    button {
+      background: #8b5cf6;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 10px;
+    }
+    button:hover {
+      background: #7c3aed;
+    }
+    .status {
+      background: #2d1b4e;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+    .error {
+      background: #7f1d1d;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+    .success {
+      background: #14532d;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎭 AR Try-On Debug Test</h1>
+    <p>This page will help diagnose why the AR try-on isn't working.</p>
+
+    <div id="status" class="status">
+      <h3>Status: Not Started</h3>
+      <div id="statusDetails"></div>
+    </div>
+
+    <div class="controls">
+      <button onclick="testCamera()">1. Test Camera Access</button>
+      <button onclick="testCanvas()">2. Test Canvas Drawing</button>
+      <button onclick="testWigLoad()">3. Test Wig Image Load</button>
+      <button onclick="testFullAR()">4. Test Full AR</button>
+    </div>
+
+    <h3>Video Element (Camera Feed):</h3>
+    <video id="videoElement" autoplay playsinline muted></video>
+
+    <h3>Canvas Element (AR Output):</h3>
+    <canvas id="canvasElement" width="640" height="480"></canvas>
+
+    <div id="logs" style="margin-top: 20px; background: #000; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 12px; max-height: 300px; overflow-y: auto;"></div>
+  </div>
+
+  <script>
+    const video = document.getElementById('videoElement');
+    const canvas = document.getElementById('canvasElement');
+    const ctx = canvas.getContext('2d');
+    const statusDiv = document.getElementById('status');
+    const statusDetails = document.getElementById('statusDetails');
+    const logsDiv = document.getElementById('logs');
+
+    let stream = null;
+    let wigImage = null;
+    let animationId = null;
+
+    function log(message, type = 'info') {
+      const timestamp = new Date().toLocaleTimeString();
+      const color = type === 'error' ? '#ff6b6b' : type === 'success' ? '#51cf66' : '#74c0fc';
+      logsDiv.innerHTML += `<div style="color: ${color};">[${timestamp}] ${message}</div>`;
+      logsDiv.scrollTop = logsDiv.scrollHeight;
+      console.log(message);
+    }
+
+    function updateStatus(title, details, type = 'status') {
+      statusDiv.className = type;
+      statusDiv.innerHTML = `<h3>${title}</h3><div id="statusDetails">${details}</div>`;
+    }
+
+    async function testCamera() {
+      log('Testing camera access...', 'info');
+      updateStatus('Testing Camera...', 'Requesting camera permission...', 'status');
+
+      try {
+        // Check if getUserMedia is supported
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error('getUserMedia is not supported in this browser');
+        }
+
+        log('Browser supports getUserMedia', 'success');
+
+        // Request camera access
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: 'user',
+            width: { ideal: 640 },
+            height: { ideal: 480 }
+          },
+          audio: false
+        });
+
+        log('Camera access granted!', 'success');
+        
+        // Attach stream to video element
+        video.srcObject = stream;
+        await video.play();
+
+        log(`Video playing: ${video.videoWidth}x${video.videoHeight}`, 'success');
+        
+        // Set canvas size to match video
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+
+        updateStatus('✅ Camera Working!', `Video size: ${video.videoWidth}x${video.videoHeight}`, 'success');
+
+      } catch (error) {
+        log(`Camera error: ${error.message}`, 'error');
+        updateStatus('❌ Camera Failed', error.message, 'error');
+      }
+    }
+
+    function testCanvas() {
+      log('Testing canvas drawing...', 'info');
+      
+      if (!stream || !video.videoWidth) {
+        log('Please test camera first!', 'error');
+        updateStatus('❌ Test Camera First', 'Run test 1 before testing canvas', 'error');
+        return;
+      }
+
+      try {
+        // Draw video frame to canvas
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        log('Successfully drew video frame to canvas', 'success');
+
+        // Draw a test rectangle
+        ctx.fillStyle = 'rgba(139, 92, 246, 0.5)';
+        ctx.fillRect(50, 50, 100, 100);
+        log('Drew test rectangle on canvas', 'success');
+
+        updateStatus('✅ Canvas Working!', 'Video frame and test rectangle drawn successfully', 'success');
+
+      } catch (error) {
+        log(`Canvas error: ${error.message}`, 'error');
+        updateStatus('❌ Canvas Failed', error.message, 'error');
+      }
+    }
+
+    async function testWigLoad() {
+      log('Testing wig image load...', 'info');
+      updateStatus('Testing Wig Load...', 'Loading wig image...', 'status');
+
+      try {
+        // Create a test wig image (purple rectangle with transparency)
+        const testCanvas = document.createElement('canvas');
+        testCanvas.width = 400;
+        testCanvas.height = 600;
+        const testCtx = testCanvas.getContext('2d');
+        
+        // Draw a purple "wig" shape
+        testCtx.fillStyle = '#8b5cf6';
+        testCtx.beginPath();
+        testCtx.ellipse(200, 300, 180, 280, 0, 0, Math.PI * 2);
+        testCtx.fill();
+
+        // Convert to image
+        wigImage = new Image();
+        wigImage.src = testCanvas.toDataURL();
+        
+        await new Promise((resolve, reject) => {
+          wigImage.onload = resolve;
+          wigImage.onerror = reject;
+        });
+
+        log('Wig image loaded successfully', 'success');
+        log(`Wig size: ${wigImage.width}x${wigImage.height}`, 'success');
+
+        // Draw wig on canvas
+        if (canvas.width > 0) {
+          ctx.drawImage(wigImage, 50, 50, 200, 300);
+          log('Drew wig on canvas', 'success');
+        }
+
+        updateStatus('✅ Wig Image Working!', `Wig loaded: ${wigImage.width}x${wigImage.height}`, 'success');
+
+      } catch (error) {
+        log(`Wig load error: ${error.message}`, 'error');
+        updateStatus('❌ Wig Load Failed', error.message, 'error');
+      }
+    }
+
+    async function testFullAR() {
+      log('Testing full AR rendering...', 'info');
+      updateStatus('Testing Full AR...', 'Starting AR rendering loop...', 'status');
+
+      if (!stream || !video.videoWidth) {
+        log('Please test camera first!', 'error');
+        updateStatus('❌ Test Camera First', 'Run test 1 before testing full AR', 'error');
+        return;
+      }
+
+      if (!wigImage) {
+        log('Please test wig load first!', 'error');
+        updateStatus('❌ Test Wig Load First', 'Run test 3 before testing full AR', 'error');
+        return;
+      }
+
+      try {
+        let frameCount = 0;
+        let lastFPSUpdate = Date.now();
+        let fps = 0;
+
+        function renderFrame() {
+          // Draw video frame
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+          // Simple face detection (center of frame)
+          const faceX = canvas.width * 0.25;
+          const faceY = canvas.height * 0.1;
+          const faceWidth = canvas.width * 0.5;
+          const faceHeight = canvas.height * 0.4;
+
+          // Draw face detection box (for debugging)
+          ctx.strokeStyle = '#51cf66';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(faceX, faceY, faceWidth, faceHeight);
+
+          // Draw wig on top of face
+          const wigWidth = faceWidth * 1.2;
+          const wigHeight = (wigImage.height / wigImage.width) * wigWidth;
+          const wigX = faceX - (wigWidth - faceWidth) / 2;
+          const wigY = faceY - wigHeight * 0.3;
+
+          ctx.globalAlpha = 0.9;
+          ctx.drawImage(wigImage, wigX, wigY, wigWidth, wigHeight);
+          ctx.globalAlpha = 1.0;
+
+          // Update FPS
+          frameCount++;
+          const now = Date.now();
+          if (now - lastFPSUpdate >= 1000) {
+            fps = frameCount;
+            frameCount = 0;
+            lastFPSUpdate = now;
+            updateStatus('✅ AR Running!', `FPS: ${fps} | Video: ${video.videoWidth}x${video.videoHeight}`, 'success');
+          }
+
+          animationId = requestAnimationFrame(renderFrame);
+        }
+
+        // Start rendering
+        renderFrame();
+        log('AR rendering started!', 'success');
+
+      } catch (error) {
+        log(`AR rendering error: ${error.message}`, 'error');
+        updateStatus('❌ AR Failed', error.message, 'error');
+      }
+    }
+
+    // Stop rendering when page unloads
+    window.addEventListener('beforeunload', () => {
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+      }
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    });
+
+    log('Debug page loaded. Click buttons to test each component.', 'info');
+  </script>
+</body>
+</html>

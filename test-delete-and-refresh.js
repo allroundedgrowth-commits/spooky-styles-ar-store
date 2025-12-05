@@ -4,7 +4,7 @@ async function testDeleteAndRefresh() {
   
   // 1. Get initial product count
   console.log('1. Getting initial products...');
-  let response = await fetch('http://localhost:5000/api/products');
+  let response = await fetch('http://localhost:3000/api/products');
   let data = await response.json();
   const initialCount = data.count;
   const firstProduct = data.data[0];
@@ -13,7 +13,7 @@ async function testDeleteAndRefresh() {
   
   // 2. Login as admin
   console.log('2. Logging in as admin...');
-  const loginResponse = await fetch('http://localhost:5000/api/auth/login', {
+  const loginResponse = await fetch('http://localhost:3000/api/auth/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -27,7 +27,7 @@ async function testDeleteAndRefresh() {
   
   // 3. Delete the first product
   console.log(`3. Deleting product: ${firstProduct.name}...`);
-  const deleteResponse = await fetch(`http://localhost:5000/api/products/${firstProduct.id}`, {
+  const deleteResponse = await fetch(`http://localhost:3000/api/products/${firstProduct.id}`, {
     method: 'DELETE',
     headers: {
       'Authorization': `Bearer ${token}`
@@ -51,7 +51,7 @@ async function testDeleteAndRefresh() {
   
   // 5. Get products again (should be one less)
   console.log('5. Getting products after delete...');
-  response = await fetch('http://localhost:5000/api/products');
+  response = await fetch('http://localhost:3000/api/products');
   data = await response.json();
   const newCount = data.count;
   console.log(`   New count: ${newCount}`);

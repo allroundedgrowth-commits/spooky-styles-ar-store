@@ -2,7 +2,7 @@
 async function testAnalytics() {
   console.log('🎃 Testing Analytics System\n');
   
-  const baseUrl = 'http://localhost:5000/api';
+  const baseUrl = 'http://localhost:3000/api';
   const sessionId = `test_${Date.now()}`;
   
   try {

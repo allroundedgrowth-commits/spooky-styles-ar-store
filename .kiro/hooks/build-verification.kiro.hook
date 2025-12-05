@@ -1,0 +1,21 @@
+{
+  "enabled": true,
+  "name": "Build Verification",
+  "description": "Verifies that the project still builds successfully when critical config files are modified",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "tsconfig.json",
+      "frontend/tsconfig.json",
+      "backend/tsconfig.json",
+      "frontend/vite.config.ts",
+      "frontend/tailwind.config.js",
+      ".eslintrc.json"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A build configuration file has been modified. Please verify:\n\n1. TypeScript compilation succeeds:\n   - cd frontend && npx tsc --noEmit\n   - cd backend && npx tsc --noEmit\n\n2. Frontend build works: npm run build --workspace=frontend\n3. Backend build works: npm run build --workspace=backend\n4. Linting passes: npm run lint\n5. No breaking changes introduced\n\nProvide a build verification summary and any errors found."
+  }
+}

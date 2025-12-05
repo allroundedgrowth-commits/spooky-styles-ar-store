@@ -2,7 +2,7 @@
 async function testFullFlow() {
   console.log('🎃 Testing Full Auth Flow\n');
   
-  const baseUrl = 'http://localhost:5000/api';
+  const baseUrl = 'http://localhost:3000/api';
   let token = null;
   
   try {

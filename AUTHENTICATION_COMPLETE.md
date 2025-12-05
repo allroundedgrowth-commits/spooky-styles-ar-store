@@ -55,8 +55,8 @@ npm run dev
 http://localhost:3000/account
 
 # 3. Test credentials
-Email: admin@spookywigs.com
-Password: SpookyAdmin2024!
+Email: admin@spookystyles.com
+Password: Admin123!
 
 # 4. Features to test:
 - Click eye icon to show password ✓
@@ -133,7 +133,7 @@ Password: SpookyAdmin2024!
   "token": "eyJhbGc...",
   "user": {
     "id": "...",
-    "email": "admin@spookywigs.com",
+    "email": "admin@spookystyles.com",
     "name": "Admin",
     "is_admin": true
   },
@@ -229,7 +229,7 @@ http://localhost:3000/account
 # Test login endpoint
 curl -X POST http://localhost:5000/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@spookywigs.com","password":"SpookyAdmin2024!"}'
+  -d '{"email":"admin@spookystyles.com","password":"Admin123!"}'
 ```
 
 ---
@@ -242,8 +242,8 @@ curl -X POST http://localhost:5000/api/auth/login \
 npm run dev --workspace=backend
 
 # Watch for logs:
-[Auth] Login attempt for: admin@spookywigs.com
-[Auth] Login successful for: admin@spookywigs.com
+[Auth] Login attempt for: admin@spookystyles.com
+[Auth] Login successful for: admin@spookystyles.com
 ```
 
 ### Frontend Console

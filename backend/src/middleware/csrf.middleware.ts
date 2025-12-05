@@ -55,7 +55,7 @@ export const csrfProtection = async (
     }
     
     // Get user ID from authenticated request
-    const userId = req.user?.id;
+    const userId = (req as any).user?.id;
     
     if (!userId) {
       res.status(401).json({
@@ -115,7 +115,7 @@ export const csrfProtection = async (
  */
 export const getCSRFToken = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = req.user?.id;
+    const userId = (req as any).user?.id;
     
     if (!userId) {
       res.status(401).json({

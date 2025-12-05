@@ -1,0 +1,23 @@
+{
+  "enabled": true,
+  "name": "Security Audit Trigger",
+  "description": "Performs security checks when authentication, payment, or admin code is modified",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "backend/src/services/auth.service.ts",
+      "backend/src/services/payment.service.ts",
+      "backend/src/services/paystack.service.ts",
+      "backend/src/middleware/auth.middleware.ts",
+      "backend/src/middleware/admin.middleware.ts",
+      "backend/src/routes/auth.routes.ts",
+      "backend/src/routes/payment.routes.ts",
+      "backend/src/routes/paystack.routes.ts"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Security-sensitive code has been modified. Please perform a security audit:\n\n1. Authentication & Authorization:\n   - JWT token handling is secure\n   - Password hashing uses bcrypt\n   - Admin routes are properly protected\n   - No authentication bypass vulnerabilities\n\n2. Payment Security:\n   - Stripe/Paystack keys are not exposed\n   - Payment amounts are validated server-side\n   - No price manipulation vulnerabilities\n   - Webhook signatures are verified\n\n3. Input Validation:\n   - All user inputs are sanitized\n   - SQL injection prevention\n   - XSS prevention\n   - CSRF protection is active\n\n4. Rate Limiting:\n   - Rate limits are in place\n   - No brute force vulnerabilities\n\nProvide a security audit summary with any vulnerabilities found."
+  }
+}

@@ -1,5 +1,6 @@
 import api from './apiService';
 import { User, RegisterRequest, LoginRequest, AuthResponse } from '../types/user';
+import { fetchCSRFToken } from './api';
 
 /**
  * Authentication Service
@@ -12,6 +13,9 @@ class AuthService {
     // Store token in localStorage
     localStorage.setItem('auth_token', authData.token);
     
+    // Fetch CSRF token after successful registration
+    await fetchCSRFToken();
+    
     return authData;
   }
 
@@ -20,6 +24,9 @@ class AuthService {
     
     // Store token in localStorage
     localStorage.setItem('auth_token', authData.token);
+    
+    // Fetch CSRF token after successful login
+    await fetchCSRFToken();
     
     return authData;
   }
@@ -32,6 +39,7 @@ class AuthService {
       // Continue with local cleanup even if API fails
     } finally {
       localStorage.removeItem('auth_token');
+      localStorage.removeItem('csrf_token');
       // Don't remove remembered credentials on logout
     }
   }

@@ -220,6 +220,38 @@ class PaymentService {
       throw error;
     }
   }
+
+  async completePayment(paymentIntentId: string): Promise<any> {
+    try {
+      // Retrieve payment intent from Stripe
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+      
+      if (paymentIntent.status !== 'succeeded') {
+        throw new ValidationError('Payment has not been completed');
+      }
+
+      // Check if order already exists
+      const existingOrder = await orderService.getOrderByPaymentIntentId(paymentIntentId);
+      if (existingOrder) {
+        return existingOrder;
+      }
+
+      // Create order using the same logic as webhook
+      await this.handlePaymentSuccess(paymentIntent);
+      
+      // Retrieve and return the created order
+      const order = await orderService.getOrderByPaymentIntentId(paymentIntentId);
+      
+      if (!order) {
+        throw new Error('Order creation failed');
+      }
+
+      return order;
+    } catch (error) {
+      console.error('Error completing payment:', error);
+      throw error;
+    }
+  }
 }
 
 export default new PaymentService();

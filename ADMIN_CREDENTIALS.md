@@ -3,7 +3,7 @@
 ## Current Admin Account
 
 **Email:** `admin@spookystyles.com`  
-**Password:** `Admin123!`
+**Password:** `admin123`
 
 ## Login URL
 

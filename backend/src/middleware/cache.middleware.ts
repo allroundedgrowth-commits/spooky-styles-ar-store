@@ -34,8 +34,8 @@ export const cacheMiddleware = (options: CacheOptions = {}) => {
 
       // Add vary-by parameters
       varyBy.forEach((param) => {
-        if (param === 'userId' && req.user?.id) {
-          keyParts.push(`user:${req.user.id}`);
+        if (param === 'userId' && (req as any).user?.id) {
+          keyParts.push(`user:${(req as any).user.id}`);
         } else if (param === 'query') {
           keyParts.push(JSON.stringify(req.query));
         } else if (param === 'params') {

@@ -2,7 +2,7 @@
 const testProductId = '477914eb-e57f-4b31-ab98-2f58d39f63b4';
 
 // First, let's check if the product exists
-fetch(`http://localhost:5000/api/products/${testProductId}`)
+fetch(`http://localhost:3000/api/products/${testProductId}`)
   .then(res => {
     console.log('GET Status:', res.status);
     return res.json();
@@ -11,7 +11,7 @@ fetch(`http://localhost:5000/api/products/${testProductId}`)
     console.log('Product exists:', data);
     
     // Now try to delete (will fail without auth, but should not be 404)
-    return fetch(`http://localhost:5000/api/products/${testProductId}`, {
+    return fetch(`http://localhost:3000/api/products/${testProductId}`, {
       method: 'DELETE'
     });
   })

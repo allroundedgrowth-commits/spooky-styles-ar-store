@@ -27,46 +27,46 @@ class CartService {
       // For guest users, use session_id only
       const sessionIdValue = sessionId || 'guest-session';
       
+      // Try to get existing cart first
+      const existing = await pool.query(
+        'SELECT id FROM carts WHERE user_id IS NULL AND session_id = $1 LIMIT 1',
+        [sessionIdValue]
+      );
+
+      if (existing.rows.length > 0) {
+        return existing.rows[0].id;
+      }
+
+      // Create new cart if doesn't exist
       const result = await pool.query(
         `INSERT INTO carts (user_id, session_id, updated_at)
          VALUES (NULL, $1, CURRENT_TIMESTAMP)
-         ON CONFLICT DO NOTHING
          RETURNING id`,
         [sessionIdValue]
       );
 
-      if (result.rows.length > 0) {
-        return result.rows[0].id;
-      }
-
-      // Cart already exists, fetch it
-      const existing = await pool.query(
-        'SELECT id FROM carts WHERE session_id = $1 ORDER BY updated_at DESC LIMIT 1',
-        [sessionIdValue]
-      );
-
-      return existing.rows[0]?.id;
+      return result.rows[0].id;
     } else {
       // For authenticated users
+      // Try to get existing cart first
+      const existing = await pool.query(
+        'SELECT id FROM carts WHERE user_id = $1 LIMIT 1',
+        [userId]
+      );
+
+      if (existing.rows.length > 0) {
+        return existing.rows[0].id;
+      }
+
+      // Create new cart if doesn't exist
       const result = await pool.query(
         `INSERT INTO carts (user_id, session_id, updated_at)
          VALUES ($1, $2, CURRENT_TIMESTAMP)
-         ON CONFLICT DO NOTHING
          RETURNING id`,
         [userId, sessionId || null]
       );
 
-      if (result.rows.length > 0) {
-        return result.rows[0].id;
-      }
-
-      // Cart already exists, fetch it
-      const existing = await pool.query(
-        'SELECT id FROM carts WHERE user_id = $1 OR session_id = $2 ORDER BY updated_at DESC LIMIT 1',
-        [userId, sessionId || null]
-      );
-
-      return existing.rows[0]?.id;
+      return result.rows[0].id;
     }
   }
 
@@ -272,10 +272,27 @@ class CartService {
 
   async clearCart(userId: string, sessionId?: string): Promise<void> {
     try {
-      await pool.query(
-        'DELETE FROM carts WHERE user_id = $1 OR session_id = $2',
-        [userId, sessionId || null]
-      );
+      const isGuest = userId === 'guest' || !userId;
+      
+      if (isGuest) {
+        // For guest users, delete cart items only
+        await pool.query(
+          `DELETE FROM cart_items 
+           WHERE cart_id IN (
+             SELECT id FROM carts WHERE user_id IS NULL AND session_id = $1
+           )`,
+          [sessionId || 'guest-session']
+        );
+      } else {
+        // For authenticated users, delete cart items only
+        await pool.query(
+          `DELETE FROM cart_items 
+           WHERE cart_id IN (
+             SELECT id FROM carts WHERE user_id = $1
+           )`,
+          [userId]
+        );
+      }
     } catch (error) {
       console.error('Error clearing cart:', error);
       throw error;

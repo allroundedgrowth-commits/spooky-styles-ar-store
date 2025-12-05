@@ -78,8 +78,8 @@
 npm run dev
 
 # 2. Login as admin
-Email: admin@spookywigs.com
-Password: SpookyAdmin2024!
+Email: admin@spookystyles.com
+Password: Admin123!
 
 # 3. Go to Admin Dashboard
 # 4. Click delete on any product

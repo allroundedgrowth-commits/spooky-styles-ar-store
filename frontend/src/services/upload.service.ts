@@ -1,4 +1,4 @@
-import apiService from './apiService';
+import { apiClient } from './api';
 
 export interface UploadResult {
   key: string;
@@ -39,7 +39,7 @@ class UploadService {
     const formData = new FormData();
     formData.append('image', file);
 
-    const response = await apiService.post<{ data: ImageUploadResult }>(
+    const response = await apiClient.post<{ data: ImageUploadResult }>(
       '/upload/image',
       formData,
       {
@@ -49,7 +49,7 @@ class UploadService {
       }
     );
 
-    return response.data;
+    return response.data.data;
   }
 
   /**
@@ -61,7 +61,7 @@ class UploadService {
       formData.append('images', file);
     });
 
-    const response = await apiService.post<{ data: ImageUploadResult[] }>(
+    const response = await apiClient.post<{ data: ImageUploadResult[] }>(
       '/upload/images',
       formData,
       {
@@ -71,7 +71,7 @@ class UploadService {
       }
     );
 
-    return response.data;
+    return response.data.data;
   }
 
   /**
@@ -81,7 +81,7 @@ class UploadService {
     const formData = new FormData();
     formData.append('model', file);
 
-    const response = await apiService.post<{ data: ModelUploadResult }>(
+    const response = await apiClient.post<{ data: ModelUploadResult }>(
       '/upload/model',
       formData,
       {
@@ -91,7 +91,7 @@ class UploadService {
       }
     );
 
-    return response.data;
+    return response.data.data;
   }
 
   /**
@@ -101,7 +101,7 @@ class UploadService {
     const formData = new FormData();
     formData.append('image', file);
 
-    const response = await apiService.post<{ data: ImageUploadResult }>(
+    const response = await apiClient.post<{ data: ImageUploadResult }>(
       '/upload/inspiration',
       formData,
       {
@@ -111,14 +111,14 @@ class UploadService {
       }
     );
 
-    return response.data;
+    return response.data.data;
   }
 
   /**
    * Delete a file from S3
    */
   async deleteFile(key: string): Promise<void> {
-    await apiService.delete(`/upload/${encodeURIComponent(key)}`);
+    await apiClient.delete(`/upload/${encodeURIComponent(key)}`);
   }
 
   /**
@@ -128,12 +128,12 @@ class UploadService {
     key: string,
     expiresIn: number = 3600
   ): Promise<SignedUrlResult> {
-    const response = await apiService.post<{ data: SignedUrlResult }>(
+    const response = await apiClient.post<{ data: SignedUrlResult }>(
       '/upload/signed-url',
       { key, expiresIn }
     );
 
-    return response.data;
+    return response.data.data;
   }
 
   /**

@@ -1,0 +1,21 @@
+{
+  "enabled": true,
+  "name": "Performance Regression Check",
+  "description": "Alerts when changes to performance-critical code might cause regressions",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "frontend/src/engine/ARTryOnEngine.ts",
+      "frontend/src/engine/Simple2DAREngine.ts",
+      "frontend/src/engine/HairFlatteningEngine.ts",
+      "frontend/src/engine/HairSegmentationModule.ts",
+      "frontend/src/engine/FaceTrackingModule.ts",
+      "frontend/src/engine/PerformanceManager.ts"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A performance-critical AR engine file has been modified. Please analyze:\n\n1. Check for potential performance regressions:\n   - Unnecessary re-renders or loops\n   - Memory leaks (missing cleanup)\n   - Blocking operations on main thread\n   - Large object allocations in hot paths\n\n2. Verify performance targets:\n   - AR rendering: 60 FPS target\n   - Hair segmentation: <500ms\n   - Hair flattening: <300ms\n   - Face tracking: <100ms per frame\n\n3. Suggest optimizations if needed\n\nProvide a performance analysis summary."
+  }
+}

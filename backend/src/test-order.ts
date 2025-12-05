@@ -13,7 +13,7 @@ const results: TestResult[] = [];
 // Test credentials
 let authToken = '';
 let adminToken = '';
-let userId = '';
+// let userId = '';
 let orderId = '';
 let productId = '';
 

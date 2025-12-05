@@ -6,7 +6,6 @@ async function checkSetup() {
   console.log('\n🔍 Checking Your Setup...\n');
   
   console.log('DATABASE_URL:', process.env.DATABASE_URL);
-  console.log('Using Supabase?:', process.env.DATABASE_URL?.includes('supabase') ? 'YES' : 'NO');
   console.log('Using localhost?:', process.env.DATABASE_URL?.includes('localhost') ? 'YES' : 'NO');
   
   const pool = new Pool({
